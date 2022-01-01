@@ -7,24 +7,24 @@
 #define SMOKE_X_APP_VERSION "0.1.0"
 
 ESP_EVENT_DECLARE_BASE(SMOKE_X_EVENT);
-
+#define SMOKE_X_DEVICE_ID_LEN 8
 typedef enum {
     SMOKE_X_EVENT_SYNC = 0,
     SMOKE_X_EVENT_SYNC_SUCCESS,
     SMOKE_X_EVENT_STATE_X2,
-    SMOKE_X_EVENT_STATE_X4
-
+    SMOKE_X_EVENT_STATE_X4,
+    SMOKE_X_EVENT_DISCOVERY_REQUIRED,
 } smoke_x_event_t;
 
 typedef struct {
     unsigned int frequency;
-    char device_id[8];
+    char device_id[SMOKE_X_DEVICE_ID_LEN];
 } smoke_x_config_t;
 
-typedef struct {
+typedef struct {               // Comments below indicate received format
     unsigned int unk_1;        // Normally 30
-    unsigned int unk_2;        // Normally 1...units?
-    unsigned int unk_3;        // Normally 1
+    char * units;              // F(1) or C(2)
+    unsigned int unk_2;        // Normally 1, sometimes 2 (alarm?)
     bool probe_1_attached;     // probe1 inserted(0), not(3)
     double probe_1_temp;       // probe1 temp tenths_deg
     bool probe_1_alarm;        // probe1 alarm on (1), off(0)
@@ -39,7 +39,7 @@ typedef struct {
     };
     int probe_2_min;        // probe2 alarm min deg
     bool billows_attached;  // billows attached(1), not(0)
-    int unk_4;              // 0 or 4
+    int unk_3;              // 0 or 4
 } smoke_x_state_t;
 
 esp_err_t smoke_x_init();
@@ -49,5 +49,7 @@ esp_err_t smoke_x_start();
 esp_err_t smoke_x_stop();
 esp_err_t smoke_x_get_config(smoke_x_config_t *p_config);
 esp_err_t smoke_x_get_state(smoke_x_state_t *p_state);
+char * smoke_x_get_units();
+char * smoke_x_get_device_id();
 
 #endif

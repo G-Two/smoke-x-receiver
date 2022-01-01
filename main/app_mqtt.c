@@ -7,8 +7,6 @@
 #include "app_mqtt.h"
 #include "smoke_x.h"
 
-static const char *TAG = "app_mqtt";
-
 #define NVS_NAMESPACE "mqtt_config"
 #define NVS_URI "uri"
 #define NVS_USERNAME "username"
@@ -16,6 +14,8 @@ static const char *TAG = "app_mqtt";
 #define NVS_ENABLED "enabled"
 #define NVS_IDENTITY "identity"
 #define MQTT_BUF_SIZE 512
+
+#define BOOL_TO_STR(b) b ? "ON" : "OFF"
 
 // Home Assistant specific things
 // https://www.home-assistant.io/docs/mqtt/discovery/
@@ -37,6 +37,8 @@ static app_mqtt_params_t app_mqtt_params = {.uri = NULL,
                                             .enabled = false};
 static esp_mqtt_client_handle_t client = NULL;
 static bool connected = false;
+static const char *TAG = "app_mqtt";
+static TickType_t last_discovery_publish = 0;
 
 #define MQTT_PUBLISH(client, topic, buf)                            \
     if (esp_mqtt_client_enqueue(client, topic, buf,                 \
@@ -45,165 +47,6 @@ static bool connected = false;
         ESP_LOGE(TAG, "Failed to send message to server: %s", buf); \
     }
 
-static void mqtt_publish_device_config() {
-    char buf[MQTT_BUF_SIZE];
-    unsigned char mac[6];
-    char tmp_str[100] = {0};
-
-    esp_base_mac_addr_get(mac);
-    snprintf(tmp_str, 13, "%02x%02x%02x%02x%02x%02x", mac[0], mac[1], mac[2],
-             mac[3], mac[4], mac[5]);
-
-    cJSON *root = cJSON_CreateObject();
-    cJSON *device = cJSON_AddObjectToObject(root, HASS_DEVICE);
-    cJSON_AddStringToObject(device, "name", "Smoke X2 Receiver");
-    cJSON_AddStringToObject(device, "identifiers", tmp_str);
-    cJSON_AddStringToObject(device, "sw_version", SMOKE_X_APP_VERSION);
-    cJSON_AddStringToObject(device, "model", "Smoke X2");
-    cJSON_AddStringToObject(device, "manufacturer", "ThermoWorks");
-
-    cJSON_AddStringToObject(root, HASS_DEVICE_CLASS, "temperature");
-    cJSON_AddStringToObject(root, "uniq_id", "smoke-x_probe_1_temp");
-    cJSON_AddStringToObject(root, HASS_DEVICE_NAME, "Smoke X2 Probe 1 Temp");
-    cJSON_AddStringToObject(root, HASS_STATE_TOPIC, HASS_MQTT_STATE_TOPIC);
-    cJSON_AddStringToObject(root, HASS_PAYLOAD_NOT_AVAIL, "offline");
-    cJSON_AddStringToObject(root, HASS_UNIT_OF_MEASUREMENT, "°F");
-    cJSON_AddStringToObject(root, HASS_VALUE_TEMPLATE,
-                            "{{value_json.probe_1_temp}}");
-    cJSON_AddNumberToObject(root, HASS_EXPIRE_AFTER, 120);
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_probe_1_temp/config",
-                 buf);
-
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_probe_2_temp"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Probe 2 Temp"));
-    cJSON_ReplaceItemInObject(
-        root, HASS_VALUE_TEMPLATE,
-        cJSON_CreateString("{{value_json.probe_2_temp}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_probe_2_temp/config",
-                 buf);
-
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_probe_1_max"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Probe 1 Max"));
-    cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
-                              cJSON_CreateString("{{value_json.probe_1_max}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_probe_1_max/config",
-                 buf);
-
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_probe_1_min"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Probe 1 Min"));
-    cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
-                              cJSON_CreateString("{{value_json.probe_1_min}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_probe_1_min/config",
-                 buf);
-
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_probe_2_max"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Probe 2 Max"));
-    cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
-                              cJSON_CreateString("{{value_json.probe_2_max}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_probe_2_max/config",
-                 buf);
-
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_probe_2_min"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Probe 2 Min"));
-    cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
-                              cJSON_CreateString("{{value_json.probe_2_min}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_probe_2_min/config",
-                 buf);
-
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_billows_target"));
-    cJSON_ReplaceItemInObject(
-        root, HASS_DEVICE_NAME,
-        cJSON_CreateString("Smoke X2 Billows Target Temp"));
-    cJSON_ReplaceItemInObject(
-        root, HASS_VALUE_TEMPLATE,
-        cJSON_CreateString("{{value_json.billows_target}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_billows_target/config",
-                 buf);
-
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_CLASS,
-                              cJSON_CreateString("plug"));
-    cJSON_DeleteItemFromObject(root, HASS_UNIT_OF_MEASUREMENT);
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_probe_1_attached"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Probe 1 Attached"));
-    cJSON_ReplaceItemInObject(
-        root, HASS_VALUE_TEMPLATE,
-        cJSON_CreateString("{{value_json.probe_1_attached}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client,
-                 "homeassistant/binary_sensor/smoke-x_probe_1_attached/config",
-                 buf);
-
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_probe_2_attached"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Probe 2 Attached"));
-    cJSON_ReplaceItemInObject(
-        root, HASS_VALUE_TEMPLATE,
-        cJSON_CreateString("{{value_json.probe_2_attached}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client,
-                 "homeassistant/binary_sensor/smoke-x_probe_2_attached/config",
-                 buf);
-
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_billows_attached"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Billows Attached"));
-    cJSON_ReplaceItemInObject(
-        root, HASS_VALUE_TEMPLATE,
-        cJSON_CreateString("{{value_json.billows_attached}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client,
-                 "homeassistant/binary_sensor/smoke-x_billows_attached/config",
-                 buf);
-
-    cJSON_DeleteItemFromObject(root, HASS_DEVICE_CLASS);
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_probe_1_alarm"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Probe 1 Alarm"));
-    cJSON_ReplaceItemInObject(
-        root, HASS_VALUE_TEMPLATE,
-        cJSON_CreateString("{{value_json.probe_1_alarm}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client,
-                 "homeassistant/binary_sensor/smoke-x_probe_1_alarm/config",
-                 buf);
-
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_probe_2_alarm"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Probe 2 Alarm"));
-    cJSON_ReplaceItemInObject(
-        root, HASS_VALUE_TEMPLATE,
-        cJSON_CreateString("{{value_json.probe_2_alarm}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client,
-                 "homeassistant/binary_sensor/smoke-x_probe_2_alarm/config",
-                 buf);
-
-    cJSON_Delete(root);
-}
 
 static void log_error_if_nonzero(const char *message, int error_code) {
     if (error_code != 0) {
@@ -220,7 +63,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
     switch ((esp_mqtt_event_id_t)event_id) {
         case MQTT_EVENT_CONNECTED:
             ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-            mqtt_publish_device_config();
             connected = true;
             break;
         case MQTT_EVENT_DISCONNECTED:
@@ -229,11 +71,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
             break;
         case MQTT_EVENT_PUBLISHED:
             ESP_LOGD(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
-            break;
-        case MQTT_EVENT_DATA:
-            ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-            printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-            printf("DATA=%.*s\r\n", event->data_len, event->data);
             break;
         case MQTT_EVENT_ERROR:
             ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
@@ -372,12 +209,175 @@ void app_mqtt_stop() {
     }
 }
 
-#define BOOL_TO_STR(b) b ? "ON" : "OFF"
+
+void app_mqtt_publish_discovery() {
+    char buf[MQTT_BUF_SIZE];
+
+    ESP_LOGI(TAG, "Sending Home Assistant MQTT Device Discovery");
+    cJSON *root = cJSON_CreateObject();
+    cJSON *device = cJSON_AddObjectToObject(root, HASS_DEVICE);
+    cJSON_AddStringToObject(device, "name", "Smoke X2 Receiver");
+    cJSON_AddStringToObject(device, "identifiers", smoke_x_get_device_id());
+    cJSON_AddStringToObject(device, "sw_version", SMOKE_X_APP_VERSION);
+    cJSON_AddStringToObject(device, "model", "Smoke X2");
+    cJSON_AddStringToObject(device, "manufacturer", "ThermoWorks");
+
+    cJSON_AddStringToObject(root, HASS_DEVICE_CLASS, "temperature");
+    cJSON_AddStringToObject(root, "uniq_id", "smoke-x_probe_1_temp");
+    cJSON_AddStringToObject(root, HASS_DEVICE_NAME, "Smoke X2 Probe 1 Temp");
+    cJSON_AddStringToObject(root, HASS_STATE_TOPIC, HASS_MQTT_STATE_TOPIC);
+    cJSON_AddStringToObject(root, HASS_PAYLOAD_NOT_AVAIL, "offline");
+    cJSON_AddStringToObject(root, HASS_UNIT_OF_MEASUREMENT, smoke_x_get_units());
+    cJSON_AddStringToObject(root, HASS_VALUE_TEMPLATE,
+                            "{{value_json.probe_1_temp}}");
+    cJSON_AddNumberToObject(root, HASS_EXPIRE_AFTER, 120);
+    cJSON_PrintPreallocated(root, buf, 512, false);
+    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_probe_1_temp/config",
+                 buf);
+
+    cJSON_ReplaceItemInObject(root, "uniq_id",
+                              cJSON_CreateString("smoke-x_probe_2_temp"));
+    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
+                              cJSON_CreateString("Smoke X2 Probe 2 Temp"));
+    cJSON_ReplaceItemInObject(
+        root, HASS_VALUE_TEMPLATE,
+        cJSON_CreateString("{{value_json.probe_2_temp}}"));
+    cJSON_PrintPreallocated(root, buf, 512, false);
+    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_probe_2_temp/config",
+                 buf);
+
+    cJSON_ReplaceItemInObject(root, "uniq_id",
+                              cJSON_CreateString("smoke-x_probe_1_max"));
+    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
+                              cJSON_CreateString("Smoke X2 Probe 1 Max"));
+    cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
+                              cJSON_CreateString("{{value_json.probe_1_max}}"));
+    cJSON_PrintPreallocated(root, buf, 512, false);
+    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_probe_1_max/config",
+                 buf);
+
+    cJSON_ReplaceItemInObject(root, "uniq_id",
+                              cJSON_CreateString("smoke-x_probe_1_min"));
+    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
+                              cJSON_CreateString("Smoke X2 Probe 1 Min"));
+    cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
+                              cJSON_CreateString("{{value_json.probe_1_min}}"));
+    cJSON_PrintPreallocated(root, buf, 512, false);
+    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_probe_1_min/config",
+                 buf);
+
+    cJSON_ReplaceItemInObject(root, "uniq_id",
+                              cJSON_CreateString("smoke-x_probe_2_max"));
+    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
+                              cJSON_CreateString("Smoke X2 Probe 2 Max"));
+    cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
+                              cJSON_CreateString("{{value_json.probe_2_max}}"));
+    cJSON_PrintPreallocated(root, buf, 512, false);
+    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_probe_2_max/config",
+                 buf);
+
+    cJSON_ReplaceItemInObject(root, "uniq_id",
+                              cJSON_CreateString("smoke-x_probe_2_min"));
+    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
+                              cJSON_CreateString("Smoke X2 Probe 2 Min"));
+    cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
+                              cJSON_CreateString("{{value_json.probe_2_min}}"));
+    cJSON_PrintPreallocated(root, buf, 512, false);
+    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_probe_2_min/config",
+                 buf);
+
+    cJSON_ReplaceItemInObject(root, "uniq_id",
+                              cJSON_CreateString("smoke-x_billows_target"));
+    cJSON_ReplaceItemInObject(
+        root, HASS_DEVICE_NAME,
+        cJSON_CreateString("Smoke X2 Billows Target Temp"));
+    cJSON_ReplaceItemInObject(
+        root, HASS_VALUE_TEMPLATE,
+        cJSON_CreateString("{{value_json.billows_target}}"));
+    cJSON_PrintPreallocated(root, buf, 512, false);
+    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_billows_target/config",
+                 buf);
+
+    cJSON_ReplaceItemInObject(root, HASS_DEVICE_CLASS,
+                              cJSON_CreateString("plug"));
+    cJSON_DeleteItemFromObject(root, HASS_UNIT_OF_MEASUREMENT);
+    cJSON_ReplaceItemInObject(root, "uniq_id",
+                              cJSON_CreateString("smoke-x_probe_1_attached"));
+    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
+                              cJSON_CreateString("Smoke X2 Probe 1 Attached"));
+    cJSON_ReplaceItemInObject(
+        root, HASS_VALUE_TEMPLATE,
+        cJSON_CreateString("{{value_json.probe_1_attached}}"));
+    cJSON_PrintPreallocated(root, buf, 512, false);
+    MQTT_PUBLISH(client,
+                 "homeassistant/binary_sensor/smoke-x_probe_1_attached/config",
+                 buf);
+
+    cJSON_ReplaceItemInObject(root, "uniq_id",
+                              cJSON_CreateString("smoke-x_probe_2_attached"));
+    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
+                              cJSON_CreateString("Smoke X2 Probe 2 Attached"));
+    cJSON_ReplaceItemInObject(
+        root, HASS_VALUE_TEMPLATE,
+        cJSON_CreateString("{{value_json.probe_2_attached}}"));
+    cJSON_PrintPreallocated(root, buf, 512, false);
+    MQTT_PUBLISH(client,
+                 "homeassistant/binary_sensor/smoke-x_probe_2_attached/config",
+                 buf);
+
+    cJSON_ReplaceItemInObject(root, "uniq_id",
+                              cJSON_CreateString("smoke-x_billows_attached"));
+    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
+                              cJSON_CreateString("Smoke X2 Billows Attached"));
+    cJSON_ReplaceItemInObject(
+        root, HASS_VALUE_TEMPLATE,
+        cJSON_CreateString("{{value_json.billows_attached}}"));
+    cJSON_PrintPreallocated(root, buf, 512, false);
+    MQTT_PUBLISH(client,
+                 "homeassistant/binary_sensor/smoke-x_billows_attached/config",
+                 buf);
+
+
+    cJSON_DeleteItemFromObject(root, HASS_DEVICE_CLASS);
+    cJSON_ReplaceItemInObject(root, "uniq_id",
+                              cJSON_CreateString("smoke-x_probe_1_alarm"));
+    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
+                              cJSON_CreateString("Smoke X2 Probe 1 Alarm"));
+    cJSON_ReplaceItemInObject(
+        root, HASS_VALUE_TEMPLATE,
+        cJSON_CreateString("{{value_json.probe_1_alarm}}"));
+    cJSON_PrintPreallocated(root, buf, 512, false);
+    MQTT_PUBLISH(client,
+                 "homeassistant/binary_sensor/smoke-x_probe_1_alarm/config",
+                 buf);
+
+    cJSON_ReplaceItemInObject(root, "uniq_id",
+                              cJSON_CreateString("smoke-x_probe_2_alarm"));
+    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
+                              cJSON_CreateString("Smoke X2 Probe 2 Alarm"));
+    cJSON_ReplaceItemInObject(
+        root, HASS_VALUE_TEMPLATE,
+        cJSON_CreateString("{{value_json.probe_2_alarm}}"));
+    cJSON_PrintPreallocated(root, buf, 512, false);
+    
+    MQTT_PUBLISH(client,
+                 "homeassistant/binary_sensor/smoke-x_probe_2_alarm/config",
+                 buf);
+    last_discovery_publish = xTaskGetTickCount();
+
+    cJSON_Delete(root);
+}
+
 
 void app_mqtt_publish_state() {
     char buf[MQTT_BUF_SIZE];
     smoke_x_state_t state;
     cJSON *root;
+
+    if (!last_discovery_publish || (pdTICKS_TO_MS(xTaskGetTickCount() - last_discovery_publish)) > (APP_MQTT_DISCOVERY_INTERVAL_SEC * 1000)){
+        esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_DISCOVERY_REQUIRED, NULL, 0,
+                           1000);
+    }
 
     smoke_x_get_state(&state);
 
@@ -431,6 +431,7 @@ void app_mqtt_publish_state() {
     MQTT_PUBLISH(client, HASS_MQTT_STATE_TOPIC, buf);
 
     cJSON_Delete(root);
+    
 }
 
 void app_mqtt_get_params(app_mqtt_params_t *params) {

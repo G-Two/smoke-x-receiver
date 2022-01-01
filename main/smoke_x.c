@@ -21,7 +21,6 @@ static const char *TAG = "smoke_x";
 static smoke_x_config_t config;
 static smoke_x_state_t state;
 static bool configured = false;
-static TickType_t last_heard = 0;
 
 ESP_EVENT_DEFINE_BASE(SMOKE_X_EVENT);
 
@@ -58,7 +57,7 @@ static void handle_sync_msg(const char *msg, const int len) {
     ESP_LOGI(TAG, "Received sync message: %s", msg);
     char *tmp = strdup(msg);
     strtok(tmp, ",");
-    strncpy(config.device_id, strtok(NULL, ","), sizeof(config.device_id));
+    strncpy(config.device_id, strtok(NULL, ","), SMOKE_X_DEVICE_ID_LEN);
     ESP_LOGI(TAG, "DeviceID set to: %s", config.device_id);
     for (int i = 0; i < 4; i++) {
         freq_array[i] = (char)atoi(strtok(NULL, ","));
@@ -86,12 +85,12 @@ static void handle_sync_msg(const char *msg, const int len) {
 }
 
 static void parse_x2_msg(const char *msg, smoke_x_state_t *state) {
-    last_heard = xTaskGetTickCount();
+    char *last_units = state->units;
     char *tmp = strdup(msg);
     strtok(tmp, ",");  // Not using device ID
     state->unk_1 = atoi(strtok(NULL, ","));
+    state->units = atoi(strtok(NULL, ",")) == 1 ? "°F" : "°C";
     state->unk_2 = atoi(strtok(NULL, ","));
-    state->unk_3 = atoi(strtok(NULL, ","));
     state->probe_1_attached = atoi(strtok(NULL, ",")) == 3 ? false : true;
     state->probe_1_temp = atof(strtok(NULL, ",")) / 10.0;
     state->probe_1_alarm = atoi(strtok(NULL, ","));
@@ -103,8 +102,12 @@ static void parse_x2_msg(const char *msg, smoke_x_state_t *state) {
     state->probe_2_max = atoi(strtok(NULL, ","));
     state->probe_2_min = atoi(strtok(NULL, ","));
     state->billows_attached = atoi(strtok(NULL, ","));
-    state->unk_4 = atoi(strtok(NULL, ","));
+    state->unk_3 = atoi(strtok(NULL, ","));
     free(tmp);
+    if (last_units != state->units){
+        esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_DISCOVERY_REQUIRED, NULL, 0,
+                           1000);
+    }
 }
 
 static esp_err_t save_config_to_nvram() {
@@ -212,7 +215,7 @@ esp_err_t smoke_x_init() {
 bool smoke_x_is_configured() { return configured; }
 
 esp_err_t smoke_x_sync() {
-    strncpy(config.device_id, "", sizeof(config.device_id));
+    strncpy(config.device_id, "", SMOKE_X_DEVICE_ID_LEN);
     config.frequency = 0;
     save_config_to_nvram();
     configured = false;
@@ -228,6 +231,14 @@ esp_err_t smoke_x_get_config(smoke_x_config_t *p_config) {
 esp_err_t smoke_x_get_state(smoke_x_state_t *p_state) {
     memcpy(p_state, &state, sizeof(smoke_x_state_t));
     return ESP_OK;
+}
+
+char * smoke_x_get_device_id(){
+    return config.device_id;
+}
+
+char * smoke_x_get_units(){
+    return state.units;
 }
 
 esp_err_t smoke_x_start() {

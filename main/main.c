@@ -26,6 +26,11 @@ void smoke_x_event_handler(void* handler_arg, esp_event_base_t base,
         case SMOKE_X_EVENT_STATE_X4:
             // TODO: Implement X4
             break;
+        case SMOKE_X_EVENT_DISCOVERY_REQUIRED:
+            if (app_mqtt_is_connected()){
+                app_mqtt_publish_discovery();
+            }
+            break;
         default:
             ESP_LOGE(TAG, "Unknown message type received: %d", event_id);
     }
