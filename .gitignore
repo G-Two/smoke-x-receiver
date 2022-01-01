@@ -1,0 +1,9 @@
+*.DS_store
+.vscode/
+build/
+esp-idf/
+esp32-lora-library/
+web_ui/node_modules/
+web_ui/dist/
+sdkconfig
+sdkconfig.old
