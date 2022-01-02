@@ -19,6 +19,8 @@
 
 // Home Assistant specific things
 // https://www.home-assistant.io/docs/mqtt/discovery/
+#define HASS_MQTT_STATUS_TOPIC "homeassistant/status"
+#define HASS_MQTT_HASS_BIRTH "online"
 #define HASS_MQTT_CONFIG_TOPIC "homeassistant/sensor/smoke-x/config"
 #define HASS_MQTT_STATE_TOPIC "homeassistant/smoke-x/state"
 #define HASS_DEVICE "dev"
@@ -38,7 +40,7 @@ static app_mqtt_params_t app_mqtt_params = {.uri = NULL,
 static esp_mqtt_client_handle_t client = NULL;
 static bool connected = false;
 static const char *TAG = "app_mqtt";
-static TickType_t last_discovery_publish = 0;
+static bool discovery_published;
 
 #define MQTT_PUBLISH(client, topic, buf)                            \
     if (esp_mqtt_client_enqueue(client, topic, buf,                 \
@@ -62,6 +64,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
     switch ((esp_mqtt_event_id_t)event_id) {
         case MQTT_EVENT_CONNECTED:
             ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
+            esp_mqtt_client_subscribe(client, HASS_MQTT_STATUS_TOPIC, 1);
             connected = true;
             break;
         case MQTT_EVENT_DISCONNECTED:
@@ -70,6 +73,17 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
             break;
         case MQTT_EVENT_PUBLISHED:
             ESP_LOGD(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
+            break;
+        case MQTT_EVENT_DATA:
+            ESP_LOGD(TAG, "MQTT_EVENT_DATA %s:%s", event->topic, event->data);
+            if (strcmp(event->topic, HASS_MQTT_STATUS_TOPIC)) {
+                if (strcmp(event->data, HASS_MQTT_HASS_BIRTH)) {
+                    ESP_LOGI(TAG, "Home Assistant MQTT birth message received");
+                    esp_event_post(SMOKE_X_EVENT,
+                                   SMOKE_X_EVENT_DISCOVERY_REQUIRED, NULL, 0,
+                                   1000);
+                }
+            }
             break;
         case MQTT_EVENT_ERROR:
             ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
@@ -361,9 +375,9 @@ void app_mqtt_publish_discovery() {
     MQTT_PUBLISH(client,
                  "homeassistant/binary_sensor/smoke-x_probe_2_alarm/config",
                  buf);
-    last_discovery_publish = xTaskGetTickCount();
 
     cJSON_Delete(root);
+    discovery_published = true;
 }
 
 void app_mqtt_publish_state() {
@@ -371,9 +385,7 @@ void app_mqtt_publish_state() {
     smoke_x_state_t state;
     cJSON *root;
 
-    if (!last_discovery_publish ||
-        (pdTICKS_TO_MS(xTaskGetTickCount() - last_discovery_publish)) >
-            (APP_MQTT_DISCOVERY_INTERVAL_SEC * 1000)) {
+    if (!discovery_published) {
         esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_DISCOVERY_REQUIRED, NULL, 0,
                        1000);
     }

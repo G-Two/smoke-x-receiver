@@ -5,7 +5,6 @@
 #define APP_MQTT_MAX_USERNAME_LEN 128
 #define APP_MQTT_MAX_PASSWORD_LEN 128
 #define APP_MQTT_MAX_IDENTITY_LEN 128
-#define APP_MQTT_DISCOVERY_INTERVAL_SEC 300
 
 typedef struct {
     char* uri;
