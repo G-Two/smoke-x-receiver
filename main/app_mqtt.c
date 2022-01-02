@@ -47,7 +47,6 @@ static TickType_t last_discovery_publish = 0;
         ESP_LOGE(TAG, "Failed to send message to server: %s", buf); \
     }
 
-
 static void log_error_if_nonzero(const char *message, int error_code) {
     if (error_code != 0) {
         ESP_LOGE(TAG, "Last error %s: 0x%x", message, error_code);
@@ -209,7 +208,6 @@ void app_mqtt_stop() {
     }
 }
 
-
 void app_mqtt_publish_discovery() {
     char buf[MQTT_BUF_SIZE];
 
@@ -227,7 +225,8 @@ void app_mqtt_publish_discovery() {
     cJSON_AddStringToObject(root, HASS_DEVICE_NAME, "Smoke X2 Probe 1 Temp");
     cJSON_AddStringToObject(root, HASS_STATE_TOPIC, HASS_MQTT_STATE_TOPIC);
     cJSON_AddStringToObject(root, HASS_PAYLOAD_NOT_AVAIL, "offline");
-    cJSON_AddStringToObject(root, HASS_UNIT_OF_MEASUREMENT, smoke_x_get_units());
+    cJSON_AddStringToObject(root, HASS_UNIT_OF_MEASUREMENT,
+                            smoke_x_get_units());
     cJSON_AddStringToObject(root, HASS_VALUE_TEMPLATE,
                             "{{value_json.probe_1_temp}}");
     cJSON_AddNumberToObject(root, HASS_EXPIRE_AFTER, 120);
@@ -337,7 +336,6 @@ void app_mqtt_publish_discovery() {
                  "homeassistant/binary_sensor/smoke-x_billows_attached/config",
                  buf);
 
-
     cJSON_DeleteItemFromObject(root, HASS_DEVICE_CLASS);
     cJSON_ReplaceItemInObject(root, "uniq_id",
                               cJSON_CreateString("smoke-x_probe_1_alarm"));
@@ -359,7 +357,7 @@ void app_mqtt_publish_discovery() {
         root, HASS_VALUE_TEMPLATE,
         cJSON_CreateString("{{value_json.probe_2_alarm}}"));
     cJSON_PrintPreallocated(root, buf, 512, false);
-    
+
     MQTT_PUBLISH(client,
                  "homeassistant/binary_sensor/smoke-x_probe_2_alarm/config",
                  buf);
@@ -368,15 +366,16 @@ void app_mqtt_publish_discovery() {
     cJSON_Delete(root);
 }
 
-
 void app_mqtt_publish_state() {
     char buf[MQTT_BUF_SIZE];
     smoke_x_state_t state;
     cJSON *root;
 
-    if (!last_discovery_publish || (pdTICKS_TO_MS(xTaskGetTickCount() - last_discovery_publish)) > (APP_MQTT_DISCOVERY_INTERVAL_SEC * 1000)){
+    if (!last_discovery_publish ||
+        (pdTICKS_TO_MS(xTaskGetTickCount() - last_discovery_publish)) >
+            (APP_MQTT_DISCOVERY_INTERVAL_SEC * 1000)) {
         esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_DISCOVERY_REQUIRED, NULL, 0,
-                           1000);
+                       1000);
     }
 
     smoke_x_get_state(&state);
@@ -431,7 +430,6 @@ void app_mqtt_publish_state() {
     MQTT_PUBLISH(client, HASS_MQTT_STATE_TOPIC, buf);
 
     cJSON_Delete(root);
-    
 }
 
 void app_mqtt_get_params(app_mqtt_params_t *params) {

@@ -2,7 +2,7 @@
   <div id="app">
     <div id="nav">
       <h2>Smoke X Receiver Config</h2>
-      <router-link to="/">Wi-Fi</router-link> |
+      <router-link to="/wifi">Wifi</router-link> |
       <router-link to="/pairing">Pairing</router-link> |
       <router-link to="/mqtt">MQTT</router-link> |
       <router-link to="/lora">LoRa</router-link>

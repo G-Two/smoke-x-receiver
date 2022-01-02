@@ -104,9 +104,9 @@ static void parse_x2_msg(const char *msg, smoke_x_state_t *state) {
     state->billows_attached = atoi(strtok(NULL, ","));
     state->unk_3 = atoi(strtok(NULL, ","));
     free(tmp);
-    if (last_units != state->units){
+    if (last_units != state->units) {
         esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_DISCOVERY_REQUIRED, NULL, 0,
-                           1000);
+                       1000);
     }
 }
 
@@ -233,13 +233,9 @@ esp_err_t smoke_x_get_state(smoke_x_state_t *p_state) {
     return ESP_OK;
 }
 
-char * smoke_x_get_device_id(){
-    return config.device_id;
-}
+char *smoke_x_get_device_id() { return config.device_id; }
 
-char * smoke_x_get_units(){
-    return state.units;
-}
+char *smoke_x_get_units() { return state.units; }
 
 esp_err_t smoke_x_start() {
     app_lora_start_rx(handle_rx);

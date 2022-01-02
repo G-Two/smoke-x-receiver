@@ -23,7 +23,7 @@ typedef struct {
 
 typedef struct {               // Comments below indicate received format
     unsigned int unk_1;        // Normally 30
-    char * units;              // F(1) or C(2)
+    char *units;               // F(1) or C(2)
     unsigned int unk_2;        // Normally 1, sometimes 2 (alarm?)
     bool probe_1_attached;     // probe1 inserted(0), not(3)
     double probe_1_temp;       // probe1 temp tenths_deg
@@ -49,7 +49,7 @@ esp_err_t smoke_x_start();
 esp_err_t smoke_x_stop();
 esp_err_t smoke_x_get_config(smoke_x_config_t *p_config);
 esp_err_t smoke_x_get_state(smoke_x_state_t *p_state);
-char * smoke_x_get_units();
-char * smoke_x_get_device_id();
+char *smoke_x_get_units();
+char *smoke_x_get_device_id();
 
 #endif

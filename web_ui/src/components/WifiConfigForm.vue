@@ -43,7 +43,7 @@
           <b-form-input id="password" v-model="password" v-if="authType != 0" />
           <center>
           <b-button id="apply_button" block variant="primary" v-on:click.prevent="sendToServer"
-            >Apply</b-button
+            >Save & Apply</b-button
           ></center>
         </form>
     </center>

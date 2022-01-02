@@ -215,10 +215,10 @@ export default {
   data() {
     return {
       selectedFrequency: 910500000,
-      selectedTxPower: 5,
+      selectedTxPower: 12,
       selectedBandwidthIndex: 4,
       selectedBandwidth: 125000,
-      selectedCodingRate: 8,
+      selectedCodingRate: 5,
       selectedSpreadingFactor: 9,
       selectedMessageLength: 50,
       selectedPreambleLength: 10,
@@ -227,7 +227,7 @@ export default {
       switchEnableCRC: true,
       receivedMessages: "",
       transmitMessage: "",
-      switchTxRepeatMessage: true,
+      switchTxRepeatMessage: false,
       selectedTxInterval: 5000,
     };
   },

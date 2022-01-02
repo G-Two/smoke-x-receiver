@@ -119,7 +119,9 @@ static esp_err_t rest_common_get_handler(httpd_req_t *req) {
     rest_server_context_t *rest_context =
         (rest_server_context_t *)req->user_ctx;
     strlcpy(filepath, rest_context->base_path, sizeof(filepath));
-    if (req->uri[strlen(req->uri) - 1] == '/') {
+    if (!strcmp(req->uri, "/") || !strcmp(req->uri, "/wifi") ||
+        !strcmp(req->uri, "/pairing") || !strcmp(req->uri, "/mqtt") ||
+        !strcmp(req->uri, "/lora")) {
         strlcat(filepath, "/index.html", sizeof(filepath));
     } else {
         strlcat(filepath, req->uri, sizeof(filepath));
@@ -127,10 +129,8 @@ static esp_err_t rest_common_get_handler(httpd_req_t *req) {
     strlcat(filepath, ".gz", sizeof(filepath));
     int fd = open(filepath, O_RDONLY, 0);
     if (fd == -1) {
-        ESP_LOGE(TAG, "Failed to open file : %s", filepath);
-        /* Respond with 500 Internal Server Error */
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
-                            "Failed to read existing file");
+        ESP_LOGE(TAG, "Invalid resource requested : %s", req->uri);
+        httpd_resp_send_404(req);
         return ESP_FAIL;
     }
 
@@ -271,7 +271,7 @@ static esp_err_t wifi_config_get_handler(httpd_req_t *req) {
     cJSON *root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "mode", app_wifi_params.mode);
     cJSON_AddNumberToObject(root, "authType", app_wifi_params.auth_type);
-    cJSON_AddStringToObject(root, "password", app_wifi_params.password);
+    cJSON_AddStringToObject(root, "password", "");
     cJSON_AddStringToObject(root, "ssid", app_wifi_params.ssid);
     cJSON_AddStringToObject(root, "username", app_wifi_params.username);
     char *json_str = cJSON_Print(root);

@@ -27,7 +27,7 @@ void smoke_x_event_handler(void* handler_arg, esp_event_base_t base,
             // TODO: Implement X4
             break;
         case SMOKE_X_EVENT_DISCOVERY_REQUIRED:
-            if (app_mqtt_is_connected()){
+            if (app_mqtt_is_connected()) {
                 app_mqtt_publish_discovery();
             }
             break;
