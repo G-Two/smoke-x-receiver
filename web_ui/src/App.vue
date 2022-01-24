@@ -1,8 +1,9 @@
 <template>
   <div id="app">
     <div id="nav">
-      <h2>Smoke X Receiver Config</h2>
-      <router-link to="/wifi">Wifi</router-link> |
+      <h2>Smoke X Receiver</h2>
+      <router-link to="/">Status</router-link> |
+      <router-link to="/wlan">WLAN</router-link> |
       <router-link to="/pairing">Pairing</router-link> |
       <router-link to="/mqtt">MQTT</router-link> |
       <router-link to="/lora">LoRa</router-link>
@@ -25,6 +26,7 @@
   background: #ffffff;
   margin: 2rem 0 4rem 0;
   padding-top: 2rem;
+  padding-bottom: 2rem;
   position: relative;
   box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2), 0 2.5rem 5rem 0 rgba(0, 0, 0, 0.1);
 }
@@ -79,4 +81,5 @@ form {
 #nav a.router-link-exact-active {
   color: #42b983;
 }
+
 </style>

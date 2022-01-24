@@ -1,17 +1,18 @@
+
 <template>
   <div class="home">
-    <wifi-config-form />
+    <status-form />
   </div>
 </template>
 
 <script>
 // @ is an alias to /src
-import WifiConfigForm from "@/components/WifiConfigForm.vue";
+import StatusForm from "@/components/StatusForm.vue";
 
 export default {
-  name: "Wifi",
+  name: "Status",
   components: {
-    WifiConfigForm
+    StatusForm
   }
 };
 </script>

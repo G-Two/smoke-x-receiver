@@ -8,20 +8,15 @@
 #include "smoke_x.h"
 
 #define NVS_NAMESPACE "mqtt_config"
-#define NVS_URI "uri"
-#define NVS_USERNAME "username"
-#define NVS_PASSWORD "password"
-#define NVS_ENABLED "enabled"
-#define NVS_IDENTITY "identity"
 #define MQTT_BUF_SIZE 512
 
 #define BOOL_TO_STR(b) b ? "ON" : "OFF"
 
 // Home Assistant specific things
 // https://www.home-assistant.io/docs/mqtt/discovery/
+#define HASS_MQTT_BASE_TOPIC "homeassistant"
 #define HASS_MQTT_STATUS_TOPIC "homeassistant/status"
 #define HASS_MQTT_HASS_BIRTH "online"
-#define HASS_MQTT_CONFIG_TOPIC "homeassistant/sensor/smoke-x/config"
 #define HASS_MQTT_STATE_TOPIC "homeassistant/smoke-x/state"
 #define HASS_DEVICE "dev"
 #define HASS_DEVICE_CLASS "dev_cla"
@@ -36,7 +31,13 @@ static app_mqtt_params_t app_mqtt_params = {.uri = NULL,
                                             .identity = NULL,
                                             .username = NULL,
                                             .password = NULL,
-                                            .enabled = false};
+                                            .ca_cert = NULL,
+                                            .enabled = false,
+                                            .ha_discovery = false,
+                                            .ha_base_topic = NULL,
+                                            .ha_status_topic = NULL,
+                                            .ha_birth_payload = NULL,
+                                            .state_topic = NULL};
 static esp_mqtt_client_handle_t client = NULL;
 static bool connected = false;
 static const char *TAG = "app_mqtt";
@@ -64,7 +65,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
     switch ((esp_mqtt_event_id_t)event_id) {
         case MQTT_EVENT_CONNECTED:
             ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-            esp_mqtt_client_subscribe(client, HASS_MQTT_STATUS_TOPIC, 1);
+            esp_mqtt_client_subscribe(client, app_mqtt_params.ha_status_topic,
+                                      1);
             connected = true;
             break;
         case MQTT_EVENT_DISCONNECTED:
@@ -76,12 +78,14 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
             break;
         case MQTT_EVENT_DATA:
             ESP_LOGD(TAG, "MQTT_EVENT_DATA %s:%s", event->topic, event->data);
-            if (strcmp(event->topic, HASS_MQTT_STATUS_TOPIC)) {
-                if (strcmp(event->data, HASS_MQTT_HASS_BIRTH)) {
+            if (strcmp(event->topic, app_mqtt_params.ha_status_topic)) {
+                if (strcmp(event->data, app_mqtt_params.ha_birth_payload)) {
                     ESP_LOGI(TAG, "Home Assistant MQTT birth message received");
-                    esp_event_post(SMOKE_X_EVENT,
-                                   SMOKE_X_EVENT_DISCOVERY_REQUIRED, NULL, 0,
-                                   1000);
+                    if (app_mqtt_params.ha_discovery) {
+                        esp_event_post(SMOKE_X_EVENT,
+                                       SMOKE_X_EVENT_DISCOVERY_REQUIRED, NULL,
+                                       0, 1000);
+                    }
                 }
             }
             break;
@@ -114,38 +118,88 @@ static esp_err_t load_config_from_nvs() {
 
     err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &h_nvs);
     if (!err) {
-        err = nvs_get_str(h_nvs, NVS_URI, NULL, &len);
+        err = nvs_get_str(h_nvs, APP_MQTT_URI, NULL, &len);
         if (!err) {
             app_mqtt_params.uri = malloc(len);
-            err = nvs_get_str(h_nvs, NVS_URI, app_mqtt_params.uri, &len);
+            err = nvs_get_str(h_nvs, APP_MQTT_URI, app_mqtt_params.uri, &len);
         }
 
-        err = nvs_get_str(h_nvs, NVS_USERNAME, NULL, &len);
+        err = nvs_get_str(h_nvs, APP_MQTT_USERNAME, NULL, &len);
         if (!err) {
             app_mqtt_params.username = malloc(len);
-            err = nvs_get_str(h_nvs, NVS_USERNAME, app_mqtt_params.username,
-                              &len);
+            err = nvs_get_str(h_nvs, APP_MQTT_USERNAME,
+                              app_mqtt_params.username, &len);
         }
 
-        err = nvs_get_str(h_nvs, NVS_PASSWORD, NULL, &len);
+        err = nvs_get_str(h_nvs, APP_MQTT_PASSWORD, NULL, &len);
         if (!err) {
             app_mqtt_params.password = malloc(len);
-            err = nvs_get_str(h_nvs, NVS_PASSWORD, app_mqtt_params.password,
-                              &len);
+            err = nvs_get_str(h_nvs, APP_MQTT_PASSWORD,
+                              app_mqtt_params.password, &len);
         }
 
-        err = nvs_get_str(h_nvs, NVS_IDENTITY, NULL, &len);
+        err = nvs_get_str(h_nvs, APP_MQTT_IDENTITY, NULL, &len);
         if (!err) {
             app_mqtt_params.identity = malloc(len);
-            err = nvs_get_str(h_nvs, NVS_IDENTITY, app_mqtt_params.identity,
+            err = nvs_get_str(h_nvs, APP_MQTT_IDENTITY,
+                              app_mqtt_params.identity, &len);
+        }
+
+        err = nvs_get_str(h_nvs, APP_MQTT_CA_CERT, NULL, &len);
+        if (!err) {
+            app_mqtt_params.ca_cert = malloc(len);
+            err = nvs_get_str(h_nvs, APP_MQTT_CA_CERT, app_mqtt_params.ca_cert,
                               &len);
         }
 
-        err =
-            nvs_get_i8(h_nvs, NVS_ENABLED, (int8_t *)&app_mqtt_params.enabled);
+        err = nvs_get_i8(h_nvs, APP_MQTT_ENABLED,
+                         (int8_t *)&app_mqtt_params.enabled);
         if (err) {
             app_mqtt_params.enabled = false;
         }
+
+        err = nvs_get_i8(h_nvs, APP_MQTT_HA_DISCOVERY,
+                         (int8_t *)&app_mqtt_params.ha_discovery);
+        if (err) {
+            app_mqtt_params.ha_discovery = false;
+        }
+
+        err = nvs_get_str(h_nvs, APP_MQTT_HA_BASE_TOPIC, NULL, &len);
+        if (!err) {
+            app_mqtt_params.ha_base_topic = malloc(len);
+            err = nvs_get_str(h_nvs, APP_MQTT_HA_BASE_TOPIC,
+                              app_mqtt_params.ha_base_topic, &len);
+        } else {
+            app_mqtt_params.ha_base_topic = HASS_MQTT_BASE_TOPIC;
+        }
+
+        err = nvs_get_str(h_nvs, APP_MQTT_HA_STATUS_TOPIC, NULL, &len);
+        if (!err) {
+            app_mqtt_params.ha_status_topic = malloc(len);
+            err = nvs_get_str(h_nvs, APP_MQTT_HA_STATUS_TOPIC,
+                              app_mqtt_params.ha_status_topic, &len);
+        } else {
+            app_mqtt_params.ha_status_topic = HASS_MQTT_STATUS_TOPIC;
+        }
+
+        err = nvs_get_str(h_nvs, APP_MQTT_HA_BIRTH_PAYLOAD, NULL, &len);
+        if (!err) {
+            app_mqtt_params.ha_birth_payload = malloc(len);
+            err = nvs_get_str(h_nvs, APP_MQTT_HA_BIRTH_PAYLOAD,
+                              app_mqtt_params.ha_birth_payload, &len);
+        } else {
+            app_mqtt_params.ha_birth_payload = HASS_MQTT_HASS_BIRTH;
+        }
+
+        err = nvs_get_str(h_nvs, APP_MQTT_STATE_TOPIC, NULL, &len);
+        if (!err) {
+            app_mqtt_params.state_topic = malloc(len);
+            err = nvs_get_str(h_nvs, APP_MQTT_STATE_TOPIC,
+                              app_mqtt_params.state_topic, &len);
+        } else {
+            app_mqtt_params.state_topic = HASS_MQTT_STATE_TOPIC;
+        }
+
         nvs_close(h_nvs);
     }
     return err;
@@ -157,11 +211,23 @@ static esp_err_t save_config_to_nvs() {
 
     err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &h_nvs);
     if (!err) {
-        err = nvs_set_str(h_nvs, NVS_URI, app_mqtt_params.uri);
-        err = nvs_set_str(h_nvs, NVS_USERNAME, app_mqtt_params.username);
-        err = nvs_set_str(h_nvs, NVS_PASSWORD, app_mqtt_params.password);
-        err = nvs_set_str(h_nvs, NVS_IDENTITY, app_mqtt_params.identity);
-        err = nvs_set_i8(h_nvs, NVS_ENABLED, (int8_t)app_mqtt_params.enabled);
+        err = nvs_set_str(h_nvs, APP_MQTT_URI, app_mqtt_params.uri);
+        err = nvs_set_str(h_nvs, APP_MQTT_USERNAME, app_mqtt_params.username);
+        err = nvs_set_str(h_nvs, APP_MQTT_PASSWORD, app_mqtt_params.password);
+        err = nvs_set_str(h_nvs, APP_MQTT_IDENTITY, app_mqtt_params.identity);
+        err = nvs_set_str(h_nvs, APP_MQTT_CA_CERT, app_mqtt_params.ca_cert);
+        err = nvs_set_i8(h_nvs, APP_MQTT_ENABLED,
+                         (int8_t)app_mqtt_params.enabled);
+        err = nvs_set_i8(h_nvs, APP_MQTT_HA_DISCOVERY,
+                         (int8_t)app_mqtt_params.ha_discovery);
+        err = nvs_set_str(h_nvs, APP_MQTT_HA_BASE_TOPIC,
+                          app_mqtt_params.ha_base_topic);
+        err = nvs_set_str(h_nvs, APP_MQTT_HA_STATUS_TOPIC,
+                          app_mqtt_params.ha_status_topic);
+        err = nvs_set_str(h_nvs, APP_MQTT_HA_BIRTH_PAYLOAD,
+                          app_mqtt_params.ha_birth_payload);
+        err = nvs_set_str(h_nvs, APP_MQTT_STATE_TOPIC,
+                          app_mqtt_params.state_topic);
         nvs_close(h_nvs);
     }
     return err;
@@ -190,7 +256,8 @@ static esp_err_t init() {
             .uri = app_mqtt_params.uri,
             .client_id = app_mqtt_params.identity,
             .username = app_mqtt_params.username,
-            .password = app_mqtt_params.password};
+            .password = app_mqtt_params.password,
+            .cert_pem = app_mqtt_params.ca_cert};
 
         client = esp_mqtt_client_init(&mqtt_cfg);
         err = esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID,
@@ -204,6 +271,7 @@ esp_err_t app_mqtt_start() {
 
     err = init();
     if (!err & app_mqtt_params.enabled) {
+        ESP_LOGI(TAG, "Starting MQTT client");
         err = esp_mqtt_client_start(client);
     }
 
@@ -216,165 +284,177 @@ bool app_mqtt_is_enabled() { return app_mqtt_params.enabled; }
 
 void app_mqtt_stop() {
     if (client) {
+        ESP_LOGI(TAG, "Stopping MQTT client");
+        esp_mqtt_client_disconnect(client);
         esp_mqtt_client_stop(client);
         esp_mqtt_client_destroy(client);
+        connected = false;
         client = NULL;
     }
 }
 
 void app_mqtt_publish_discovery() {
     char buf[MQTT_BUF_SIZE];
+    char topic_str[100];
+    smoke_x_config_t config;
+    smoke_x_get_config(&config);
 
     ESP_LOGI(TAG, "Sending Home Assistant MQTT Device Discovery");
     cJSON *root = cJSON_CreateObject();
     cJSON *device = cJSON_AddObjectToObject(root, HASS_DEVICE);
-    cJSON_AddStringToObject(device, "name", "Smoke X2 Receiver");
+    cJSON_AddStringToObject(device, "name", "Smoke X Receiver");
     cJSON_AddStringToObject(device, "identifiers", smoke_x_get_device_id());
     cJSON_AddStringToObject(device, "sw_version", SMOKE_X_APP_VERSION);
-    cJSON_AddStringToObject(device, "model", "Smoke X2");
+    cJSON_AddStringToObject(device, "model",
+                            config.num_probes == 2 ? "X2" : "X4");
     cJSON_AddStringToObject(device, "manufacturer", "ThermoWorks");
+    cJSON_AddNumberToObject(root, HASS_EXPIRE_AFTER, 120);
+    cJSON_AddStringToObject(root, HASS_PAYLOAD_NOT_AVAIL, "offline");
+    cJSON_AddStringToObject(root, HASS_STATE_TOPIC,
+                            app_mqtt_params.state_topic);
 
     cJSON_AddStringToObject(root, HASS_DEVICE_CLASS, "temperature");
-    cJSON_AddStringToObject(root, "uniq_id", "smoke-x_probe_1_temp");
-    cJSON_AddStringToObject(root, HASS_DEVICE_NAME, "Smoke X2 Probe 1 Temp");
-    cJSON_AddStringToObject(root, HASS_STATE_TOPIC, HASS_MQTT_STATE_TOPIC);
-    cJSON_AddStringToObject(root, HASS_PAYLOAD_NOT_AVAIL, "offline");
     cJSON_AddStringToObject(root, HASS_UNIT_OF_MEASUREMENT,
                             smoke_x_get_units());
+    cJSON_AddStringToObject(root, "uniq_id", "smoke-x_billows_target");
+    cJSON_AddStringToObject(root, HASS_DEVICE_NAME,
+                            "Smoke X Billows Target Temp");
     cJSON_AddStringToObject(root, HASS_VALUE_TEMPLATE,
-                            "{{value_json.probe_1_temp}}");
-    cJSON_AddNumberToObject(root, HASS_EXPIRE_AFTER, 120);
+                            "{{value_json.billows_target}}");
     cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_probe_1_temp/config",
-                 buf);
-
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_probe_2_temp"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Probe 2 Temp"));
-    cJSON_ReplaceItemInObject(
-        root, HASS_VALUE_TEMPLATE,
-        cJSON_CreateString("{{value_json.probe_2_temp}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_probe_2_temp/config",
-                 buf);
-
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_probe_1_max"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Probe 1 Max"));
-    cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
-                              cJSON_CreateString("{{value_json.probe_1_max}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_probe_1_max/config",
-                 buf);
-
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_probe_1_min"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Probe 1 Min"));
-    cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
-                              cJSON_CreateString("{{value_json.probe_1_min}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_probe_1_min/config",
-                 buf);
-
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_probe_2_max"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Probe 2 Max"));
-    cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
-                              cJSON_CreateString("{{value_json.probe_2_max}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_probe_2_max/config",
-                 buf);
-
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_probe_2_min"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Probe 2 Min"));
-    cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
-                              cJSON_CreateString("{{value_json.probe_2_min}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_probe_2_min/config",
-                 buf);
-
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_billows_target"));
-    cJSON_ReplaceItemInObject(
-        root, HASS_DEVICE_NAME,
-        cJSON_CreateString("Smoke X2 Billows Target Temp"));
-    cJSON_ReplaceItemInObject(
-        root, HASS_VALUE_TEMPLATE,
-        cJSON_CreateString("{{value_json.billows_target}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client, "homeassistant/sensor/smoke-x_billows_target/config",
-                 buf);
-
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_CLASS,
-                              cJSON_CreateString("plug"));
+    snprintf(topic_str, sizeof(topic_str),
+             "%s/sensor/smoke-x_billows_target/config",
+             app_mqtt_params.ha_base_topic);
+    MQTT_PUBLISH(client, topic_str, buf);
+    cJSON_DeleteItemFromObject(root, HASS_DEVICE_CLASS);
     cJSON_DeleteItemFromObject(root, HASS_UNIT_OF_MEASUREMENT);
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_probe_1_attached"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Probe 1 Attached"));
-    cJSON_ReplaceItemInObject(
-        root, HASS_VALUE_TEMPLATE,
-        cJSON_CreateString("{{value_json.probe_1_attached}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client,
-                 "homeassistant/binary_sensor/smoke-x_probe_1_attached/config",
-                 buf);
 
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_probe_2_attached"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Probe 2 Attached"));
-    cJSON_ReplaceItemInObject(
-        root, HASS_VALUE_TEMPLATE,
-        cJSON_CreateString("{{value_json.probe_2_attached}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client,
-                 "homeassistant/binary_sensor/smoke-x_probe_2_attached/config",
-                 buf);
+    char uniq_id[32];
+    char device_name[32];
+    char template[64];
+    for (unsigned int i = 0; i < config.num_probes; i++) {
+        snprintf(uniq_id, sizeof(uniq_id), "smoke-x_probe_%d_temp", i + 1);
+        snprintf(device_name, sizeof(device_name), "Smoke X Probe %d Temp",
+                 i + 1);
+        snprintf(template, sizeof(template), "{{value_json.probe_%d_temp}}",
+                 i + 1);
+        cJSON_AddStringToObject(root, HASS_DEVICE_CLASS, "temperature");
+        cJSON_AddStringToObject(root, HASS_UNIT_OF_MEASUREMENT,
+                                smoke_x_get_units());
+        cJSON_ReplaceItemInObject(root, "uniq_id", cJSON_CreateString(uniq_id));
+        cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
+                                  cJSON_CreateString(device_name));
+        cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
+                                  cJSON_CreateString(template));
+        cJSON_PrintPreallocated(root, buf, 512, false);
+        snprintf(topic_str, sizeof(topic_str), "%s/sensor/%s/config",
+                 app_mqtt_params.ha_base_topic, uniq_id);
+        MQTT_PUBLISH(client, topic_str, buf);
+
+        snprintf(uniq_id, sizeof(uniq_id), "smoke-x_probe_%d_max", i + 1);
+        snprintf(device_name, sizeof(device_name), "Smoke X Probe %d Max",
+                 i + 1);
+        snprintf(template, sizeof(template), "{{value_json.probe_%d_max}}",
+                 i + 1);
+        cJSON_ReplaceItemInObject(root, "uniq_id", cJSON_CreateString(uniq_id));
+        cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
+                                  cJSON_CreateString(device_name));
+        cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
+                                  cJSON_CreateString(template));
+        cJSON_PrintPreallocated(root, buf, 512, false);
+        snprintf(topic_str, sizeof(topic_str), "%s/sensor/%s/config",
+                 app_mqtt_params.ha_base_topic, uniq_id);
+        MQTT_PUBLISH(client, topic_str, buf);
+
+        snprintf(uniq_id, sizeof(uniq_id), "smoke-x_probe_%d_min", i + 1);
+        snprintf(device_name, sizeof(device_name), "Smoke X Probe %d Min",
+                 i + 1);
+        snprintf(template, sizeof(template), "{{value_json.probe_%d_min}}",
+                 i + 1);
+        cJSON_ReplaceItemInObject(root, "uniq_id", cJSON_CreateString(uniq_id));
+        cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
+                                  cJSON_CreateString(device_name));
+        cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
+                                  cJSON_CreateString(template));
+        cJSON_PrintPreallocated(root, buf, 512, false);
+        snprintf(topic_str, sizeof(topic_str), "%s/sensor/%s/config",
+                 app_mqtt_params.ha_base_topic, uniq_id);
+        MQTT_PUBLISH(client, topic_str, buf);
+
+        snprintf(uniq_id, sizeof(uniq_id), "smoke-x_probe_%d_attached", i + 1);
+        snprintf(device_name, sizeof(device_name), "Smoke X Probe %d Attached",
+                 i + 1);
+        snprintf(template, sizeof(template), "{{value_json.probe_%d_attached}}",
+                 i + 1);
+        cJSON_ReplaceItemInObject(root, HASS_DEVICE_CLASS,
+                                  cJSON_CreateString("plug"));
+        cJSON_DeleteItemFromObject(root, HASS_UNIT_OF_MEASUREMENT);
+        cJSON_ReplaceItemInObject(root, "uniq_id", cJSON_CreateString(uniq_id));
+        cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
+                                  cJSON_CreateString(device_name));
+        cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
+                                  cJSON_CreateString(template));
+        cJSON_PrintPreallocated(root, buf, 512, false);
+        snprintf(topic_str, sizeof(topic_str), "%s/binary_sensor/%s/config",
+                 app_mqtt_params.ha_base_topic, uniq_id);
+        MQTT_PUBLISH(client, topic_str, buf);
+
+        snprintf(uniq_id, sizeof(uniq_id), "smoke-x_probe_%d_alarm", i + 1);
+        snprintf(device_name, sizeof(device_name), "Smoke X Probe %d Alarm",
+                 i + 1);
+        snprintf(template, sizeof(template), "{{value_json.probe_%d_alarm}}",
+                 i + 1);
+        cJSON_DeleteItemFromObject(root, HASS_DEVICE_CLASS);
+        cJSON_ReplaceItemInObject(root, "uniq_id", cJSON_CreateString(uniq_id));
+        cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
+                                  cJSON_CreateString(device_name));
+        cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
+                                  cJSON_CreateString(template));
+        cJSON_PrintPreallocated(root, buf, 512, false);
+        snprintf(topic_str, sizeof(topic_str), "%s/binary_sensor/%s/config",
+                 app_mqtt_params.ha_base_topic, uniq_id);
+        MQTT_PUBLISH(client, topic_str, buf);
+    }
 
     cJSON_ReplaceItemInObject(root, "uniq_id",
                               cJSON_CreateString("smoke-x_billows_attached"));
     cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Billows Attached"));
+                              cJSON_CreateString("Smoke X Billows Attached"));
+    cJSON_AddStringToObject(root, HASS_DEVICE_CLASS, "plug");
     cJSON_ReplaceItemInObject(
         root, HASS_VALUE_TEMPLATE,
         cJSON_CreateString("{{value_json.billows_attached}}"));
     cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client,
-                 "homeassistant/binary_sensor/smoke-x_billows_attached/config",
-                 buf);
+    snprintf(topic_str, sizeof(topic_str),
+             "%s/binary_sensor/smoke-x_billows_attached/config",
+             app_mqtt_params.ha_base_topic);
+    MQTT_PUBLISH(client, topic_str, buf);
 
-    cJSON_DeleteItemFromObject(root, HASS_DEVICE_CLASS);
+#ifdef SMOKE_X_DEBUG
     cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_probe_1_alarm"));
+                              cJSON_CreateString("smoke-x_debug_heap_free"));
     cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Probe 1 Alarm"));
-    cJSON_ReplaceItemInObject(
-        root, HASS_VALUE_TEMPLATE,
-        cJSON_CreateString("{{value_json.probe_1_alarm}}"));
+                              cJSON_CreateString("Smoke X Heap Free"));
+    cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
+                              cJSON_CreateString("{{value_json.heap_free}}"));
     cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client,
-                 "homeassistant/binary_sensor/smoke-x_probe_1_alarm/config",
-                 buf);
+    snprintf(topic_str, sizeof(topic_str),
+             "%s/sensor/smoke-x_debug_heap_free/config",
+             app_mqtt_params.ha_base_topic);
+    MQTT_PUBLISH(client, topic_str, buf);
 
     cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_probe_2_alarm"));
+                              cJSON_CreateString("smoke-x_debug_num_records"));
     cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X2 Probe 2 Alarm"));
-    cJSON_ReplaceItemInObject(
-        root, HASS_VALUE_TEMPLATE,
-        cJSON_CreateString("{{value_json.probe_2_alarm}}"));
+                              cJSON_CreateString("Smoke X Num Records"));
+    cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
+                              cJSON_CreateString("{{value_json.num_records}}"));
     cJSON_PrintPreallocated(root, buf, 512, false);
-
-    MQTT_PUBLISH(client,
-                 "homeassistant/binary_sensor/smoke-x_probe_2_alarm/config",
-                 buf);
+    snprintf(topic_str, sizeof(topic_str),
+             "%s/sensor/smoke-x_debug_num_records/config",
+             app_mqtt_params.ha_base_topic);
+    MQTT_PUBLISH(client, topic_str, buf);
+#endif
 
     cJSON_Delete(root);
     discovery_published = true;
@@ -384,63 +464,71 @@ void app_mqtt_publish_state() {
     char buf[MQTT_BUF_SIZE];
     smoke_x_state_t state;
     cJSON *root;
+    char tmp_str[32];
 
-    if (!discovery_published) {
+    if (!discovery_published && app_mqtt_params.ha_discovery) {
         esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_DISCOVERY_REQUIRED, NULL, 0,
                        1000);
     }
 
     smoke_x_get_state(&state);
-
     root = cJSON_CreateObject();
 
-    cJSON_AddStringToObject(root, "probe_1_attached",
-                            BOOL_TO_STR(state.probe_1_attached));
-    cJSON_AddStringToObject(root, "probe_2_attached",
-                            BOOL_TO_STR(state.probe_2_attached));
+    for (unsigned int i = 0; i < state.num_probes; i++) {
+        snprintf(tmp_str, sizeof(tmp_str), "probe_%d_attached", i + 1);
+        cJSON_AddStringToObject(root, tmp_str,
+                                BOOL_TO_STR(state.probes[i].attached));
+        if (state.probes[i].attached) {
+            snprintf(tmp_str, sizeof(tmp_str), "probe_%d_alarm", i + 1);
+            cJSON_AddStringToObject(root, tmp_str,
+                                    BOOL_TO_STR(state.probes[i].alarm));
+
+            snprintf(tmp_str, sizeof(tmp_str), "probe_%d_temp", i + 1);
+            cJSON_AddNumberToObject(root, tmp_str, state.probes[i].temp);
+
+            snprintf(tmp_str, sizeof(tmp_str), "probe_%d_max", i + 1);
+            cJSON_AddNumberToObject(root, tmp_str, state.probes[i].max_temp);
+
+            snprintf(tmp_str, sizeof(tmp_str), "probe_%d_min", i + 1);
+            cJSON_AddNumberToObject(root, tmp_str, state.probes[i].min_temp);
+
+            if ((i == (state.num_probes - 1)) && state.billows_attached) {
+                cJSON_AddNumberToObject(root, "billows_target",
+                                        state.probes[i].billows_target);
+                snprintf(tmp_str, sizeof(tmp_str), "probe_%d_max", i + 1);
+                cJSON_ReplaceItemInObject(root, tmp_str,
+                                          cJSON_CreateString("offline"));
+
+                snprintf(tmp_str, sizeof(tmp_str), "probe_%d_min", i + 1);
+                cJSON_ReplaceItemInObject(root, tmp_str,
+                                          cJSON_CreateString("offline"));
+            } else {
+                cJSON_AddStringToObject(root, "billows_target", "offline");
+            }
+        } else {
+            snprintf(tmp_str, sizeof(tmp_str), "probe_%d_alarm", i + 1);
+            cJSON_AddStringToObject(root, tmp_str, "offline");
+
+            snprintf(tmp_str, sizeof(tmp_str), "probe_%d_temp", i + 1);
+            cJSON_AddStringToObject(root, tmp_str, "offline");
+
+            snprintf(tmp_str, sizeof(tmp_str), "probe_%d_max", i + 1);
+            cJSON_AddStringToObject(root, tmp_str, "offline");
+
+            snprintf(tmp_str, sizeof(tmp_str), "probe_%d_min", i + 1);
+            cJSON_AddStringToObject(root, tmp_str, "offline");
+        }
+    }
     cJSON_AddStringToObject(root, "billows_attached",
                             BOOL_TO_STR(state.billows_attached));
-    if (state.probe_1_attached) {
-        cJSON_AddStringToObject(root, "probe_1_alarm",
-                                BOOL_TO_STR(state.probe_1_alarm));
-        cJSON_AddNumberToObject(root, "probe_1_temp", state.probe_1_temp);
-        cJSON_AddNumberToObject(root, "probe_1_max", state.probe_1_max);
-        cJSON_AddNumberToObject(root, "probe_1_min", state.probe_1_min);
-    } else {
-        cJSON_AddStringToObject(root, "probe_1_alarm", "offline");
-        cJSON_AddStringToObject(root, "probe_1_temp", "offline");
-        cJSON_AddStringToObject(root, "probe_1_max", "offline");
-        cJSON_AddStringToObject(root, "probe_1_min", "offline");
-    }
-    if (state.probe_2_attached) {
-        cJSON_AddStringToObject(root, "probe_2_alarm",
-                                BOOL_TO_STR(state.probe_2_alarm));
-        cJSON_AddNumberToObject(root, "probe_2_temp", state.probe_2_temp);
-        cJSON_AddStringToObject(root, "probe_2_alarm",
-                                BOOL_TO_STR(state.probe_2_alarm));
 
-        if (state.billows_attached) {
-            cJSON_AddNumberToObject(root, "billows_target",
-                                    state.billows_target);
-            cJSON_AddStringToObject(root, "probe_2_max", "offline");
-            cJSON_AddStringToObject(root, "probe_2_min", "offline");
-        } else {
-            cJSON_AddNumberToObject(root, "probe_2_max", state.probe_2_max);
-            cJSON_AddNumberToObject(root, "probe_2_min", state.probe_2_min);
-            cJSON_AddStringToObject(root, "billows_target", "offline");
-        }
-    } else {
-        cJSON_AddStringToObject(root, "probe_2_alarm", "offline");
-        cJSON_AddStringToObject(root, "probe_2_temp", "offline");
-        cJSON_AddStringToObject(root, "probe_2_max", "offline");
-        cJSON_AddStringToObject(root, "probe_2_min", "offline");
-        cJSON_AddStringToObject(root, "probe_2_alarm", "offline");
-        cJSON_AddStringToObject(root, "billows_target", "offline");
-    }
+#ifdef SMOKE_X_DEBUG
+    cJSON_AddNumberToObject(root, "heap_free", xPortGetFreeHeapSize());
+    cJSON_AddNumberToObject(root, "num_records", smoke_x_get_num_records());
+#endif
 
     cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client, HASS_MQTT_STATE_TOPIC, buf);
-
+    MQTT_PUBLISH(client, app_mqtt_params.state_topic, buf);
     cJSON_Delete(root);
 }
 
@@ -452,7 +540,7 @@ esp_err_t app_mqtt_set_params(app_mqtt_params_t *params) {
     esp_err_t err;
 
     if (params->uri && params->username && params->password &&
-        params->identity) {
+        params->identity && params->ca_cert) {
         memcpy(&app_mqtt_params, params, sizeof(app_mqtt_params_t));
         err = save_config_to_nvs();
         update_client_status();

@@ -18,13 +18,10 @@ void smoke_x_event_handler(void* handler_arg, esp_event_base_t base,
         case SMOKE_X_EVENT_SYNC_SUCCESS:
             // Do something with the web UI?
             break;
-        case SMOKE_X_EVENT_STATE_X2:
+        case SMOKE_X_EVENT_STATE_MSG_RECEIVED:
             if (app_mqtt_is_connected()) {
                 app_mqtt_publish_state();
             }
-            break;
-        case SMOKE_X_EVENT_STATE_X4:
-            // TODO: Implement X4
             break;
         case SMOKE_X_EVENT_DISCOVERY_REQUIRED:
             if (app_mqtt_is_connected()) {
@@ -38,13 +35,13 @@ void smoke_x_event_handler(void* handler_arg, esp_event_base_t base,
 
 void run_when_disconnected(void* handler_arg, esp_event_base_t base, int32_t id,
                            void* event_data) {
-    ESP_LOGI(TAG, "Wi-Fi connection lost, stopping MQTT client");
+    ESP_LOGI(TAG, "Wi-Fi connection lost");
     app_mqtt_stop();
 }
 
 void run_when_ip_addr_obtained(void* handler_arg, esp_event_base_t base,
                                int32_t id, void* event_data) {
-    ESP_LOGI(TAG, "IP address obtained, starting MQTT client");
+    ESP_LOGI(TAG, "IP address obtained");
     app_mqtt_start();
     esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED,
                                &run_when_disconnected, NULL);

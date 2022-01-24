@@ -4,7 +4,7 @@
 #include "esp_http_server.h"
 #include "esp_system.h"
 #include "esp_log.h"
-#include <esp_spiffs.h>
+#include "esp_spiffs.h"
 #include "esp_vfs.h"
 #include "errno.h"
 #include "cJSON.h"
@@ -119,7 +119,7 @@ static esp_err_t rest_common_get_handler(httpd_req_t *req) {
     rest_server_context_t *rest_context =
         (rest_server_context_t *)req->user_ctx;
     strlcpy(filepath, rest_context->base_path, sizeof(filepath));
-    if (!strcmp(req->uri, "/") || !strcmp(req->uri, "/wifi") ||
+    if (!strcmp(req->uri, "/") || !strcmp(req->uri, "/wlan") ||
         !strcmp(req->uri, "/pairing") || !strcmp(req->uri, "/mqtt") ||
         !strcmp(req->uri, "/lora")) {
         strlcat(filepath, "/index.html", sizeof(filepath));
@@ -136,6 +136,7 @@ static esp_err_t rest_common_get_handler(httpd_req_t *req) {
 
     set_content_type_from_file(req, filepath);
     httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
+    httpd_resp_set_hdr(req, "Cache-Control", "max-age=604800");
 
     char *chunk = rest_context->scratch;
     ssize_t read_bytes;
@@ -236,12 +237,14 @@ static esp_err_t rf_params_get_handler(httpd_req_t *req) {
     cJSON_AddNumberToObject(root, "syncWord", params.sync_word);
     cJSON_AddNumberToObject(root, "spreadingFactor", params.spreading_factor);
     cJSON_AddNumberToObject(root, "preambleLength", params.preamble_len);
-    char *sys_info = cJSON_Print(root);
-    httpd_resp_sendstr(req, sys_info);
-    free(sys_info);
+    char *json_str = cJSON_Print(root);
     cJSON_Delete(root);
-
-    return ESP_OK;
+    if (json_str) {
+        httpd_resp_sendstr(req, json_str);
+        free(json_str);
+        return ESP_OK;
+    }
+    return ESP_FAIL;
 }
 
 /* Handler for getting pairing status */
@@ -254,12 +257,29 @@ static esp_err_t pairing_status_get_handler(httpd_req_t *req) {
     cJSON_AddNumberToObject(root, "isPaired", smoke_x_is_configured());
     cJSON_AddNumberToObject(root, "currentFrequency", smoke_x_config.frequency);
     cJSON_AddStringToObject(root, "deviceId", smoke_x_config.device_id);
+    cJSON_AddStringToObject(root, "deviceModel",
+                            smoke_x_config.num_probes == 2 ? "X2" : "X4");
     char *json_str = cJSON_Print(root);
-    httpd_resp_sendstr(req, json_str);
-    free(json_str);
     cJSON_Delete(root);
+    if (json_str) {
+        httpd_resp_sendstr(req, json_str);
+        free(json_str);
+        return ESP_OK;
+    }
+    return ESP_FAIL;
+}
 
-    return ESP_OK;
+/* Handler for getting data/history status */
+static esp_err_t data_get_handler(httpd_req_t *req) {
+    char *json_str = smoke_x_get_data_json();
+    if (json_str) {
+        httpd_resp_set_type(req, "application/json");
+        httpd_resp_sendstr(req, json_str);
+        return ESP_OK;
+    }
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
+                        "Unable to generate history");
+    return ESP_FAIL;
 }
 
 /* Handler for getting wifi config */
@@ -275,11 +295,13 @@ static esp_err_t wifi_config_get_handler(httpd_req_t *req) {
     cJSON_AddStringToObject(root, "ssid", app_wifi_params.ssid);
     cJSON_AddStringToObject(root, "username", app_wifi_params.username);
     char *json_str = cJSON_Print(root);
-    httpd_resp_sendstr(req, json_str);
-    free(json_str);
     cJSON_Delete(root);
-
-    return ESP_OK;
+    if (json_str) {
+        httpd_resp_sendstr(req, json_str);
+        free(json_str);
+        return ESP_OK;
+    }
+    return ESP_FAIL;
 }
 
 /* Handler for setting wifi config */
@@ -340,24 +362,44 @@ static esp_err_t mqtt_config_get_handler(httpd_req_t *req) {
 
     httpd_resp_set_type(req, "application/json");
     cJSON *root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "uri",
+    cJSON_AddStringToObject(root, APP_MQTT_URI,
                             app_mqtt_params.uri ? app_mqtt_params.uri : "");
     cJSON_AddStringToObject(
-        root, "identity",
+        root, APP_MQTT_IDENTITY,
         app_mqtt_params.identity ? app_mqtt_params.identity : "");
     cJSON_AddStringToObject(
-        root, "username",
+        root, APP_MQTT_USERNAME,
         app_mqtt_params.username ? app_mqtt_params.username : "");
     cJSON_AddStringToObject(
-        root, "password",
+        root, APP_MQTT_PASSWORD,
         app_mqtt_params.password ? app_mqtt_params.password : "");
-    cJSON_AddBoolToObject(root, "enabled", app_mqtt_params.enabled);
+    cJSON_AddStringToObject(
+        root, APP_MQTT_CA_CERT,
+        app_mqtt_params.ca_cert ? app_mqtt_params.ca_cert : "");
+    cJSON_AddBoolToObject(root, APP_MQTT_ENABLED, app_mqtt_params.enabled);
+    cJSON_AddBoolToObject(root, APP_MQTT_HA_DISCOVERY,
+                          app_mqtt_params.ha_discovery);
+    cJSON_AddStringToObject(
+        root, APP_MQTT_HA_BASE_TOPIC,
+        app_mqtt_params.ha_base_topic ? app_mqtt_params.ha_base_topic : "");
+    cJSON_AddStringToObject(
+        root, APP_MQTT_HA_STATUS_TOPIC,
+        app_mqtt_params.ha_status_topic ? app_mqtt_params.ha_status_topic : "");
+    cJSON_AddStringToObject(root, APP_MQTT_HA_BIRTH_PAYLOAD,
+                            app_mqtt_params.ha_birth_payload
+                                ? app_mqtt_params.ha_birth_payload
+                                : "");
+    cJSON_AddStringToObject(
+        root, APP_MQTT_STATE_TOPIC,
+        app_mqtt_params.state_topic ? app_mqtt_params.state_topic : "");
     char *json_str = cJSON_Print(root);
-    httpd_resp_sendstr(req, json_str);
-    free(json_str);
     cJSON_Delete(root);
-
-    return ESP_OK;
+    if (json_str) {
+        httpd_resp_sendstr(req, json_str);
+        free(json_str);
+        return ESP_OK;
+    }
+    return ESP_FAIL;
 }
 
 /* Handler for setting mqtt config */
@@ -391,14 +433,28 @@ static esp_err_t mqtt_config_set_handler(httpd_req_t *req) {
 
     app_mqtt_params_t app_mqtt_params = {0};
 
-    json_check_strncpy(root, &app_mqtt_params.uri, "uri", APP_MQTT_MAX_URI_LEN);
-    json_check_strncpy(root, &app_mqtt_params.identity, "identity",
+    json_check_strncpy(root, &app_mqtt_params.uri, APP_MQTT_URI,
+                       APP_MQTT_MAX_URI_LEN);
+    json_check_strncpy(root, &app_mqtt_params.identity, APP_MQTT_IDENTITY,
                        APP_MQTT_MAX_IDENTITY_LEN);
-    json_check_strncpy(root, &app_mqtt_params.username, "username",
+    json_check_strncpy(root, &app_mqtt_params.username, APP_MQTT_USERNAME,
                        APP_MQTT_MAX_USERNAME_LEN);
-    json_check_strncpy(root, &app_mqtt_params.password, "password",
+    json_check_strncpy(root, &app_mqtt_params.password, APP_MQTT_PASSWORD,
                        APP_MQTT_MAX_PASSWORD_LEN);
-    app_mqtt_params.enabled = cJSON_GetObjectItem(root, "enabled")->valueint;
+    json_check_strncpy(root, &app_mqtt_params.ca_cert, APP_MQTT_CA_CERT,
+                       APP_MQTT_MAX_CERT_LEN);
+    app_mqtt_params.enabled =
+        cJSON_GetObjectItem(root, APP_MQTT_ENABLED)->valueint;
+    app_mqtt_params.ha_discovery =
+        cJSON_GetObjectItem(root, APP_MQTT_HA_DISCOVERY)->valueint;
+    json_check_strncpy(root, &app_mqtt_params.ha_base_topic,
+                       APP_MQTT_HA_BASE_TOPIC, APP_MQTT_MAX_TOPIC_LEN);
+    json_check_strncpy(root, &app_mqtt_params.ha_status_topic,
+                       APP_MQTT_HA_STATUS_TOPIC, APP_MQTT_MAX_TOPIC_LEN);
+    json_check_strncpy(root, &app_mqtt_params.ha_birth_payload,
+                       APP_MQTT_HA_BIRTH_PAYLOAD, APP_MQTT_MAX_TOPIC_LEN);
+    json_check_strncpy(root, &app_mqtt_params.state_topic, APP_MQTT_STATE_TOPIC,
+                       APP_MQTT_MAX_TOPIC_LEN);
 
     cJSON_Delete(root);
     free(param_str);
@@ -492,6 +548,13 @@ esp_err_t app_web_ui_start() {
     REST_CHECK(httpd_start(&server, &config) == ESP_OK, "Start server failed",
                err_start);
 
+    /* URI handler for status getter */
+    httpd_uri_t data_get_uri = {.uri = "/data",
+                                .method = HTTP_GET,
+                                .handler = data_get_handler,
+                                .user_ctx = rest_context};
+    httpd_register_uri_handler(server, &data_get_uri);
+
     /* URI handler for pairing status getter */
     httpd_uri_t pairing_status_get_uri = {.uri = "/pairing-status",
                                           .method = HTTP_GET,
@@ -500,14 +563,14 @@ esp_err_t app_web_ui_start() {
     httpd_register_uri_handler(server, &pairing_status_get_uri);
 
     /* URI handler for wifi config getter */
-    httpd_uri_t wifi_config_get_uri = {.uri = "/wifi-config",
+    httpd_uri_t wifi_config_get_uri = {.uri = "/wlan-config",
                                        .method = HTTP_GET,
                                        .handler = wifi_config_get_handler,
                                        .user_ctx = rest_context};
     httpd_register_uri_handler(server, &wifi_config_get_uri);
 
     /* URI handler for wifi config setter */
-    httpd_uri_t wifi_config_set_post_uri = {.uri = "/wifi-config",
+    httpd_uri_t wifi_config_set_post_uri = {.uri = "/wlan-config",
                                             .method = HTTP_POST,
                                             .handler = wifi_config_set_handler,
                                             .user_ctx = rest_context};

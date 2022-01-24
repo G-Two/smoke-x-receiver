@@ -1,10 +1,12 @@
 # ThermoWorks Smoke X Receiver
 
-An ESP32 application to receive ThermoWorks Smoke X remote thermometer RF transmissions and publish the data to an MQTT broker. This project was designed specifically to integrate with Home Assistant, but may also be used for any other MQTT consumer. This will work alongside any existing Smoke X receivers (i.e. all paired receivers will still work).
+<img width="405" alt="screenshot" src="https://user-images.githubusercontent.com/7310260/150705723-5d0896be-6a5a-4b4c-8cb7-534bb355dd1f.png">
+
+This is an ESP32+LoRa application that pairs with a [ThermoWorks Smoke X](https://www.thermoworks.com/smokex2/) remote thermometer and serves as an RF gateway to publish temperature data to an MQTT broker. This project was designed specifically to integrate with Home Assistant, but may also be used for any other MQTT-based application. This device will work alongside any existing Smoke X receivers (i.e. all paired receivers will still work). In addition, this application may also operate in a limited standalone fashion (operating in AP mode without MQTT or Home Assistant) for field use.
 
 ## Motivation
 
-I love the Smoke X's long RF range and the fact that it doesn't need an internet connection or yet another cloud account to work. But the receiver unit only shows current/max/min probe readings, with no means of watching for trends. This ESP32+LoRa application allows Smoke X users to ingest the temperature data into Home Assistant for monitoring and recording.
+I love the Smoke X's long RF range and the fact that it doesn't need an internet connection or mobile app to function. But the receiver unit only shows current/max/min probe readings, with no means of watching for trends. This ESP32+LoRa application allows Smoke X users to have all the benefits of the Smoke X and also record the data.
 
 ### Prerequisites
 
@@ -16,9 +18,9 @@ To build the ESP32 application:
 To run the ESP32 application:
 
 - [Heltec WiFi LoRa 32 (V2)](https://heltec.org/project/wifi-lora-32/) or similar development board
-  - Note: Any ESP32 board with a SPI connected Semtech SX1276/1277/1279 LoRa transceiver should work
+  - Note: Any ESP32 board with a SPI connected Semtech SX1276/1277/1279 LoRa transceiver will work
     - The default SPI pin connections are: CS: 18, RST: 14, MOSI: 27, MISO: 19, SCK: 5
-    - If your hardware is wired differently, simply update via `make menuconfig` prior to building
+    - If your hardware is wired differently, update the pin assignments via `make menuconfig` prior to building
 
 ### Prepare Environment
 
@@ -32,16 +34,15 @@ $ source ./esp-idf/export.sh
 
 ### Build
 
-If you need to make changes to the SPI configuration
+First run menuconfig to create a new sdkconfig.
 
 ```
 $ make menuconfig
 ```
 
-Otherwise, just build and flash
+Then build and flash
 
 ```
-$ make
 $ make flash
 ```
 
@@ -49,36 +50,124 @@ $ make flash
 
 After the ESP32 is flashed, several items need to be configured:
 
-- Wifi Network
+- WLAN Network
 - Smoke X Pairing
 - MQTT Setup
 
-### Wifi Network
+### WLAN Network
 
-The device will default to AP mode if Wifi information has not been configured, or if the configuration fails. The default AP mode information is:
+The device will default to AP mode if WLAN information has not been configured, or if the connection fails. The default AP mode information is:
 
 - SSID: "Smoke X Receiver"
 - PSK: "the extra b is for byob"
 
-Connect to the ESP32 with any device and use a web browser to navigate to http://192.168.4.1
-You will be presented with a self-explanatory web UI to configure the device to your home network. Once you apply the new information, reconnect to your home network.
+Connect to the ESP32 by using a web browser to navigate to http://192.168.4.1/wlan
+You will be presented with a self-explanatory web UI to configure the device to your home network. Once you apply the new information, reconnect to your home network. The ESP32 will supply a DHCP client hostname of `smoke_x`.
 
 ### Smoke X Pairing
 
-The web UI will indicate that the device requires pairing to a Smoke X base unit. If the device is ever unpaired, it will automatically monitor the sync frequency of 920.0 MHz, and will pair with the first Smoke X sync transmission it receives. To pair, simply place the Smoke X base unit in sync mode. Within a few seconds, the base unit will beep and return to normal operation. At this point you can confirm in the web UI that the device is paired with a specific device ID and frequency. This is the only time the device will normally transmit. The device may always be unpaired via the web UI.
+The web UI will indicate that the device requires pairing to a Smoke X base unit. If the device is ever unpaired, it will automatically monitor the sync frequency of 920.0 MHz, and will pair with the first Smoke X sync transmission it receives. To pair, place the Smoke X base unit in sync mode. Within a few seconds, the base unit will beep and return to normal operation. At this point you can confirm in the web UI that the device is paired with a specific device ID and frequency. This is the only time the ESP32 will transmit a LoRa signal. The device may always be unpaired via the web UI.
 
 ### MQTT Setup
 
-The web UI is also used to configure the device to point to an MQTT broker. Anonymous as well as username/password authentication is supported. TLS is not currently supported.
+The web UI is also used to configure the device to connect to an MQTT broker. The MQTT URI is the only mandatory field, the rest will depend on your MQTT broker configuration. MQTTS server auth is supported by entering a trusted CA PEM via the web UI. PKI client auth is not currently supported.
 
-## Message Schema
+## MQTT Schema
 
-TODO: Document this...
-Home Assistant knows what to do already. If your Home Assistant instance has the MQTT integration setup, the Smoke X sensors will automatically be added.
+If MQTT is configured, the application will publish status messages upon receipt of an RF transmission from the Smoke X base station. This occurs every thirty seconds. The published message contents are:
 
-## TODO
+```json
+{
+  "probe_1_attached": "ON",
+  "probe_1_alarm": "ON",
+  "probe_1_temp": 70.4,
+  "probe_1_max": 185,
+  "probe_1_min": 32,
+  "billows_target": "offline",
+  "probe_2_attached": "ON",
+  "probe_2_alarm": "ON",
+  "probe_2_temp": 70.4,
+  "probe_2_max": 91,
+  "probe_2_min": 50,
+  // X4 models will also have probe 3 and 4 data
+  "billows_attached": "OFF"
+}
+```
 
-- X4 Support (currently only supports X2)
-- MQTTS (PKI and PSK)
-- Monitoring via web UI (for BBQ away from your home network)
-- Code quality...
+## Home Assistant
+
+This application supports [Home Assistant MQTT discovery](https://www.home-assistant.io/docs/mqtt/discovery/). If your Home Assistant instance has the MQTT integration configured for discovery, the following Smoke X sensors will automatically be added:
+
+- Sensors
+  - Current Temperature
+  - Min Measured Temperature
+  - Max Measured Temperature
+  - Billows Set Temperature
+- Binary Sensors
+  - Probe Attached
+  - Billows Attached
+  - Alarm Enabled
+
+After successful connection to the MQTT broker, the device will configure each sensor by publishing discovery messages similar to the following:
+
+```json
+{
+  "dev": {
+    "name": "Smoke X Receiver",
+    "identifiers": "|ABC12",
+    "sw_version": "0.1.0",
+    "model": "X2",
+    "manufacturer": "ThermoWorks"
+  },
+  "exp_aft": 120,
+  "pl_not_avail": "offline",
+  "stat_t": "homeassistant/smoke-x/state",
+  "dev_cla": "temperature",
+  "unit_of_meas": "°F",
+  "uniq_id": "smoke-x_probe_1_temp",
+  "name": "Smoke X Probe 1 Temp",
+  "val_tpl": "{{value_json.probe_1_temp}}"
+}
+```
+
+In addition, the application will subscribe to the Home Assistant status topic for birth announcements. If Home Assistant restarts, the birth announcement will signal to the application to re-publish the discovery messages. Default Home Assistant topic names are used, but may be customized in the ESP32 web UI.
+
+## HTTP API
+
+The application provides an HTTP API (used by the web UI's temperature history graph) that may also be used by any other client that is able to send HTTP requests to the ESP32.
+
+### GET /data
+
+```json
+{
+    "probe_1": {
+        "current_temp": 136.5,
+        "alarm_max": 185,
+        "alarm_min": 32,
+        "history": [
+            95.1,
+            .
+            .
+            .
+        ]
+    },
+    "probe_2": {
+        "current_temp": 229.2,
+        "alarm_max": 91,
+        "alarm_min": 50,
+        "history": [
+            165.7,
+            .
+            .
+            .
+        ]
+    },
+    "billows": false
+}
+```
+
+## LoRa
+
+There is a LoRa configuration page in the web UI. Configuration of the LoRa modem is done automatically, and changing any of these settings will likely result in loss of sync with your Smoke X. Changes done in this menu are non-persistent, and a reboot of the ESP32 will return the device to a mode compatible with the Smoke X.
+
+<img width="409" alt="LoRa" src="https://user-images.githubusercontent.com/7310260/150706197-6107c5c5-6f34-4970-8ba2-f622217ae69e.png">

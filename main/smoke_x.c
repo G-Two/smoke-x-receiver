@@ -4,6 +4,7 @@
 #include <esp_event.h>
 #include <esp_log.h>
 #include <nvs.h>
+#include "cJSON.h"
 #include "app_lora.h"
 #include "smoke_x.h"
 
@@ -16,13 +17,34 @@
 #define NUM_COMMAS_SUCCESS_MSG 2
 #define NUM_COMMAS_X2_STATE_MSG 16
 #define NUM_COMMAS_X4_STATE_MSG 26
+#define MAX_RECORDS 1440
+#define JSON_STR_LEN 40000
 
 static const char *TAG = "smoke_x";
 static smoke_x_config_t config;
 static smoke_x_state_t state;
 static bool configured = false;
+static cJSON *root;
+static cJSON *probes[4];
+static cJSON *probes_history[4];
+static char json_str[JSON_STR_LEN];
+static char *probe_names[4] = {SMOKE_X_PROBE_1, SMOKE_X_PROBE_2,
+                               SMOKE_X_PROBE_3, SMOKE_X_PROBE_4};
 
 ESP_EVENT_DEFINE_BASE(SMOKE_X_EVENT);
+
+static void init_history_json() {
+    root = cJSON_CreateObject();
+    for (unsigned int i = 0; i < config.num_probes; i++) {
+        probes[i] = cJSON_AddObjectToObject(root, probe_names[i]);
+        cJSON_AddNumberToObject(probes[i], SMOKE_X_CURRENT_TEMP, 0);
+        cJSON_AddNumberToObject(probes[i], SMOKE_X_ALARM_MAX, 0);
+        cJSON_AddNumberToObject(probes[i], SMOKE_X_ALARM_MIN, 0);
+        probes_history[i] = cJSON_CreateArray();
+        cJSON_AddItemToObject(probes[i], SMOKE_X_HISTORY, probes_history[i]);
+    }
+    cJSON_AddBoolToObject(root, SMOKE_X_BILLOWS, state.billows_attached);
+}
 
 static esp_err_t set_frequency(unsigned int freq) {
     app_lora_params_t rf_params;
@@ -84,26 +106,39 @@ static void handle_sync_msg(const char *msg, const int len) {
     }
 }
 
-static void parse_x2_msg(const char *msg, smoke_x_state_t *state) {
+static void update_history() {
+    if (!root) {
+        init_history_json();
+    }
+
+    for (unsigned int i = 0; i < config.num_probes; i++) {
+        if (cJSON_GetArraySize(probes_history[i]) > MAX_RECORDS) {
+            cJSON_DeleteItemFromArray(probes_history[i], 0);
+        }
+        cJSON_AddItemToArray(probes_history[i],
+                             cJSON_CreateNumber(state.probes[i].temp));
+    }
+}
+
+static void parse_state_msg(const char *msg, smoke_x_state_t *state) {
     char *last_units = state->units;
     char *tmp = strdup(msg);
-    strtok(tmp, ",");  // Not using device ID
-    state->unk_1 = atoi(strtok(NULL, ","));
+    state->num_probes = config.num_probes;
+    strtok(tmp, ",");   // Not using device ID
+    strtok(NULL, ",");  // Not using unknown field
     state->units = atoi(strtok(NULL, ",")) == 1 ? "°F" : "°C";
-    state->unk_2 = atoi(strtok(NULL, ","));
-    state->probe_1_attached = atoi(strtok(NULL, ",")) == 3 ? false : true;
-    state->probe_1_temp = atof(strtok(NULL, ",")) / 10.0;
-    state->probe_1_alarm = atoi(strtok(NULL, ","));
-    state->probe_1_max = atoi(strtok(NULL, ","));
-    state->probe_1_min = atoi(strtok(NULL, ","));
-    state->probe_2_attached = atoi(strtok(NULL, ",")) == 3 ? false : true;
-    state->probe_2_temp = atof(strtok(NULL, ",")) / 10.0;
-    state->probe_2_alarm = atoi(strtok(NULL, ","));
-    state->probe_2_max = atoi(strtok(NULL, ","));
-    state->probe_2_min = atoi(strtok(NULL, ","));
+    state->new_alarm = atoi(strtok(NULL, ","));
+    for (unsigned int i = 0; i < config.num_probes; i++) {
+        state->probes[i].attached = atoi(strtok(NULL, ",")) == 3 ? false : true;
+        state->probes[i].temp = atof(strtok(NULL, ",")) / 10.0;
+        state->probes[i].alarm = atoi(strtok(NULL, ","));
+        state->probes[i].max_temp = atoi(strtok(NULL, ","));
+        state->probes[i].min_temp = atoi(strtok(NULL, ","));
+    }
     state->billows_attached = atoi(strtok(NULL, ","));
-    state->unk_3 = atoi(strtok(NULL, ","));
+    strtok(NULL, ",");  // Not using unknown field
     free(tmp);
+    update_history();
     if (last_units != state->units) {
         esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_DISCOVERY_REQUIRED, NULL, 0,
                        1000);
@@ -167,6 +202,7 @@ static void handle_rx(const char *msg, const int len) {
             break;
         case NUM_COMMAS_X2_STATE_MSG:
             if (!configured) {
+                config.num_probes = 2;
                 configured = true;
                 save_config_to_nvram();
                 esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_SYNC_SUCCESS, NULL,
@@ -175,13 +211,14 @@ static void handle_rx(const char *msg, const int len) {
                          "Received data transmission from %s, saving config",
                          config.device_id);
             }
-            parse_x2_msg(msg, &state);
+            parse_state_msg(msg, &state);
             ESP_LOGI(TAG, "X2 DATA: %s", msg);
-            esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_STATE_X2, NULL, 0,
-                           1000);
+            esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_STATE_MSG_RECEIVED,
+                           NULL, 0, 1000);
             break;
         case NUM_COMMAS_X4_STATE_MSG:
             if (!configured) {
+                config.num_probes = 4;
                 configured = true;
                 save_config_to_nvram();
                 esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_SYNC_SUCCESS, NULL,
@@ -190,8 +227,10 @@ static void handle_rx(const char *msg, const int len) {
                          "Received data transmission from %s, saving config",
                          config.device_id);
             }
-            esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_STATE_X4, NULL, 0,
-                           1000);
+            parse_state_msg(msg, &state);
+            ESP_LOGI(TAG, "X4 DATA: %s", msg);
+            esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_STATE_MSG_RECEIVED,
+                           NULL, 0, 1000);
             break;
         default:
             ESP_LOGE(TAG, "Received unrecognized message type: %s", msg);
@@ -231,6 +270,29 @@ esp_err_t smoke_x_get_config(smoke_x_config_t *p_config) {
 esp_err_t smoke_x_get_state(smoke_x_state_t *p_state) {
     memcpy(p_state, &state, sizeof(smoke_x_state_t));
     return ESP_OK;
+}
+
+char *smoke_x_get_data_json() {
+    cJSON_ReplaceItemInObject(root, SMOKE_X_BILLOWS,
+                              cJSON_CreateBool(state.billows_attached));
+    for (unsigned int i = 0; i < config.num_probes; i++) {
+        cJSON_ReplaceItemInObject(probes[i], SMOKE_X_CURRENT_TEMP,
+                                  cJSON_CreateNumber(state.probes[i].temp));
+        cJSON_ReplaceItemInObject(probes[i], SMOKE_X_ALARM_MAX,
+                                  cJSON_CreateNumber(state.probes[i].max_temp));
+        cJSON_ReplaceItemInObject(probes[i], SMOKE_X_ALARM_MIN,
+                                  cJSON_CreateNumber(state.probes[i].min_temp));
+    }
+    bool success =
+        cJSON_PrintPreallocated(root, json_str, sizeof(json_str), false);
+    if (success) {
+        return json_str;
+    }
+    return NULL;
+}
+
+unsigned int smoke_x_get_num_records() {
+    return cJSON_GetArraySize(probes_history[0]);
 }
 
 char *smoke_x_get_device_id() { return config.device_id; }

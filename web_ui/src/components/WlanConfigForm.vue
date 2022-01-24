@@ -1,7 +1,8 @@
 <template>
-  <div id="wifi-config-form">
+  <div id="wlan-config-form">
+    <b-overlay :show="!dataReceived" rounded="sm" variant="white" opacity=0.85 no-fade>
     <center>
-        <form>
+        <b-form>
           <label>Mode</label>
           <b-form-group>
             <b-form-radio
@@ -45,8 +46,9 @@
           <b-button id="apply_button" block variant="primary" v-on:click.prevent="sendToServer"
             >Save & Apply</b-button
           ></center>
-        </form>
+        </b-form>
     </center>
+      </b-overlay>
   </div>
 </template>
 
@@ -54,19 +56,20 @@
 import * as axios from "axios";
 
 export default {
-  name: "wifi-config-form",
+  name: "wlan-config-form",
   data() {
     return {
       mode: 1,
-      authType: 3,
+      authType: 5,
       ssid: "",
       username: "",
-      password: ""
+      password: "",
+      dataReceived: false,
     };
   },
   mounted: async function() {
     axios
-      .get("wifi-config")
+      .get("wlan-config")
       .then(res => {
         console.log(res);
         this.mode = res.data.mode;
@@ -74,6 +77,7 @@ export default {
         this.ssid = res.data.ssid;
         this.username = res.data.username;
         this.password = res.data.password;
+        this.dataReceived = true
       })
       .catch(error => {
         console.log(error);
@@ -81,7 +85,7 @@ export default {
   },
   methods: {
     sendToServer() {
-      axios.post("wifi-config", {
+      axios.post("wlan-config", {
         mode: this.mode,
         ssid: this.ssid,
         authType: this.authType,

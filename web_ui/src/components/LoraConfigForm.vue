@@ -1,6 +1,8 @@
 <template>
   <div id="lora-config">
     <center>
+    <b-overlay :show="!dataReceived" rounded="sm" variant="white" opacity=0.85 no-fade>
+
       <form id="config-form">
         <label for="frequency"
           ><b>Frequency:</b>
@@ -132,11 +134,12 @@
         </div>
 
         <!-- END Implicit Header Configuration Items -->
+        <center>
         <b-button block variant="primary" v-on:click.prevent="sendToServer"
           >Set LoRa Config</b-button
-        >
+        ></center>
       </form>
-
+      <div>
       <h4 for="tx-form">Transmit Message</h4>
       <form id="tx-form">
         <b-form-input
@@ -164,20 +167,23 @@
         </div>
         <b-row>
           <b-col>
+            <center>
             <b-button
               block
               variant="success"
               v-on:click.prevent="sendCmd('startTx')"
               >Start Tx</b-button
-            ></b-col
+            ></center>
+            </b-col
           >
           <b-col>
+            <center>
             <b-button
               block
               variant="danger"
               v-on:click.prevent="sendCmd('stopTx')"
               >Stop Tx</b-button
-            >
+            ></center>
           </b-col>
         </b-row>
       </form>
@@ -186,23 +192,29 @@
       <form id="rx-form">
         <b-row>
           <b-col>
+            <center>
             <b-button
               block
               variant="success"
               v-on:click.prevent="sendCmd('startRx')"
               >Start Rx</b-button
-            ></b-col
+            ></center>
+            </b-col
           >
           <b-col>
+            <center>
             <b-button
               block
               variant="danger"
               v-on:click.prevent="sendCmd('stopRx')"
               >Stop Rx</b-button
-            ></b-col
+            >
+            </center></b-col
           ></b-row
         >
       </form>
+      </div>
+          </b-overlay>
     </center>
   </div>
 </template>
@@ -229,6 +241,7 @@ export default {
       transmitMessage: "",
       switchTxRepeatMessage: false,
       selectedTxInterval: 5000,
+      dataReceived: false
     };
   },
   mounted: async function() {
@@ -249,6 +262,7 @@ export default {
         this.selectedSyncWord = res.data.syncWord;
         this.switchImplicitHeader = res.data.implicitHeader;
         this.switchEnableCRC = res.data.enableCRC;
+        this.dataReceived = true;
       })
       .catch(error => {
         console.log(error);
@@ -301,4 +315,14 @@ export default {
 </script>
 
 <style scoped>
+
+label {
+  font-weight: bold;
+  margin-bottom: 0;
+}
+
+button {
+  width: 12rem;
+}
+
 </style>

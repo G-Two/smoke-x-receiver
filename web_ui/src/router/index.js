@@ -1,14 +1,14 @@
 import Vue from "vue";
 import VueRouter from "vue-router";
-import Wifi from "../views/Wifi.vue";
+import Wlan from "../views/Wlan.vue";
 
 Vue.use(VueRouter);
 
 const routes = [
   {
-    path: "/wifi",
-    name: "Wifi",
-    component: Wifi,
+    path: "/wlan",
+    name: "Wlan",
+    component: Wlan,
   },
   {
     path: "/lora",
@@ -36,6 +36,15 @@ const routes = [
     // which is lazy-loaded when the route is visited.
     component: () =>
       import(/* webpackChunkName: "about" */ "../views/Mqtt.vue"),
+  },
+  {
+    path: "/",
+    name: "Status",
+    // route level code-splitting
+    // this generates a separate chunk (about.[hash].js) for this route
+    // which is lazy-loaded when the route is visited.
+    component: () =>
+      import(/* webpackChunkName: "about" */ "../views/Status.vue"),
   },
 ];
 
