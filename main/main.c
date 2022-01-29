@@ -1,4 +1,5 @@
 #include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <esp_event.h>
 #include <esp_log.h>
 #include <nvs_flash.h>
@@ -8,6 +9,17 @@
 #include "smoke_x.h"
 
 static const char* TAG = "smoke_x_main";
+
+#if APP_DEBUG == 2
+static char task_list_buf[1600];
+void debug_task_list() {
+    while (true) {
+        vTaskList(task_list_buf);
+        printf("\n\nTASK LIST\n%s\n", task_list_buf);
+        vTaskDelay(pdMS_TO_TICKS(6000));
+    }
+}
+#endif
 
 void smoke_x_event_handler(void* handler_arg, esp_event_base_t base,
                            int32_t event_id, void* event_data) {
@@ -49,6 +61,9 @@ void run_when_ip_addr_obtained(void* handler_arg, esp_event_base_t base,
 
 void app_main() {
     esp_log_level_set("*", ESP_LOG_INFO);
+#if APP_DEBUG > 0
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+#endif
 
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES ||
@@ -70,4 +85,8 @@ void app_main() {
     smoke_x_start();
     app_wifi_init();
     app_web_ui_start();
+
+#if APP_DEBUG == 2
+    xTaskCreate(&debug_task_list, "debug_task_list", 4096, NULL, 5, NULL);
+#endif
 }

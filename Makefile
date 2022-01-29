@@ -45,5 +45,6 @@ www:
 	npm install --prefix web_ui
 	npm run --prefix web_ui build
 	find -E web_ui/dist -regex ".*/*\.(js|css|ico|html)" -delete
+	rm -f web_ui/dist/mockServiceWorker.js
 
 endif

@@ -17,7 +17,7 @@
 #define NUM_COMMAS_SUCCESS_MSG 2
 #define NUM_COMMAS_X2_STATE_MSG 16
 #define NUM_COMMAS_X4_STATE_MSG 26
-#define MAX_RECORDS 1440
+#define MIN_FREE_HEAP_SIZE 16384
 #define JSON_STR_LEN 40000
 
 static const char *TAG = "smoke_x";
@@ -112,7 +112,7 @@ static void update_history() {
     }
 
     for (unsigned int i = 0; i < config.num_probes; i++) {
-        if (cJSON_GetArraySize(probes_history[i]) > MAX_RECORDS) {
+        if (xPortGetFreeHeapSize() < MIN_FREE_HEAP_SIZE) {
             cJSON_DeleteItemFromArray(probes_history[i], 0);
         }
         cJSON_AddItemToArray(probes_history[i],
@@ -239,6 +239,10 @@ static void handle_rx(const char *msg, const int len) {
 }
 
 esp_err_t smoke_x_init() {
+#if APP_DEBUG > 0
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+#endif
+
     esp_err_t err = read_config_from_nvram();
     if (!err) {
         err = app_lora_init();

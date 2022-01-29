@@ -531,6 +531,9 @@ static esp_err_t cmd_handler(httpd_req_t *req) {
 }
 
 esp_err_t app_web_ui_start() {
+#if APP_DEBUG > 0
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+#endif
     init_fs();
     REST_CHECK(CONFIG_WEB_MOUNT_POINT, "wrong base path", err);
     rest_server_context_t *rest_context =

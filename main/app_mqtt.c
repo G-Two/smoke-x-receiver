@@ -269,6 +269,10 @@ static esp_err_t init() {
 esp_err_t app_mqtt_start() {
     esp_err_t err;
 
+#if APP_DEBUG > 0
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+#endif
+
     err = init();
     if (!err & app_mqtt_params.enabled) {
         ESP_LOGI(TAG, "Starting MQTT client");
@@ -430,30 +434,9 @@ void app_mqtt_publish_discovery() {
              app_mqtt_params.ha_base_topic);
     MQTT_PUBLISH(client, topic_str, buf);
 
-#ifdef SMOKE_X_DEBUG
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_debug_heap_free"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X Heap Free"));
-    cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
-                              cJSON_CreateString("{{value_json.heap_free}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    snprintf(topic_str, sizeof(topic_str),
-             "%s/sensor/smoke-x_debug_heap_free/config",
-             app_mqtt_params.ha_base_topic);
-    MQTT_PUBLISH(client, topic_str, buf);
-
-    cJSON_ReplaceItemInObject(root, "uniq_id",
-                              cJSON_CreateString("smoke-x_debug_num_records"));
-    cJSON_ReplaceItemInObject(root, HASS_DEVICE_NAME,
-                              cJSON_CreateString("Smoke X Num Records"));
-    cJSON_ReplaceItemInObject(root, HASS_VALUE_TEMPLATE,
-                              cJSON_CreateString("{{value_json.num_records}}"));
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    snprintf(topic_str, sizeof(topic_str),
-             "%s/sensor/smoke-x_debug_num_records/config",
-             app_mqtt_params.ha_base_topic);
-    MQTT_PUBLISH(client, topic_str, buf);
+#if APP_DEBUG > 0
+    ESP_LOGD(TAG, "Free Heap: %d", xPortGetFreeHeapSize());
+    ESP_LOGD(TAG, "Num Records: %d", smoke_x_get_num_records());
 #endif
 
     cJSON_Delete(root);
@@ -521,14 +504,14 @@ void app_mqtt_publish_state() {
     }
     cJSON_AddStringToObject(root, "billows_attached",
                             BOOL_TO_STR(state.billows_attached));
+    cJSON_PrintPreallocated(root, buf, sizeof(buf), false);
+    MQTT_PUBLISH(client, app_mqtt_params.state_topic, buf);
 
-#ifdef SMOKE_X_DEBUG
-    cJSON_AddNumberToObject(root, "heap_free", xPortGetFreeHeapSize());
-    cJSON_AddNumberToObject(root, "num_records", smoke_x_get_num_records());
+#if APP_DEBUG > 0
+    ESP_LOGD(TAG, "Free Heap: %d", xPortGetFreeHeapSize());
+    ESP_LOGD(TAG, "Num Records: %d", smoke_x_get_num_records());
 #endif
 
-    cJSON_PrintPreallocated(root, buf, 512, false);
-    MQTT_PUBLISH(client, app_mqtt_params.state_topic, buf);
     cJSON_Delete(root);
 }
 

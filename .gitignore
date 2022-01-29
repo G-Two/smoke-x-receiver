@@ -5,5 +5,6 @@ esp-idf/
 esp32-lora-library/
 web_ui/node_modules/
 web_ui/dist/
+web_ui/public/mockServiceWorker.js
 sdkconfig
 sdkconfig.old

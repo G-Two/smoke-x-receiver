@@ -173,6 +173,10 @@ void app_wifi_init() {
     nvs_handle_t h_nvs;
     size_t len = 0;
 
+#if APP_DEBUG > 0
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+#endif
+
     err = nvs_open("wifi_config", NVS_READWRITE, &h_nvs);
     err = nvs_get_blob(h_nvs, "config", NULL, &len);
     err = nvs_get_blob(h_nvs, "config", &app_wifi_params, &len);

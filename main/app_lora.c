@@ -144,7 +144,7 @@ static void rx_task(void *pvParameter) {
 int app_lora_start_tx(app_lora_tx_msg_t *args) {
     if (args->repeat_interval_ms > 0) {
         if (!xTxTask) {
-            xTaskCreate(&tx_task, "app_lora_tx_task", 4096, args, 5, &xTxTask);
+            xTaskCreate(&tx_task, "app_lora_tx_task", 3072, args, 5, &xTxTask);
             return ESP_OK;
         }
         ESP_LOGI(TAG, "app_lora_tx_task already started");
@@ -158,7 +158,7 @@ int app_lora_start_tx(app_lora_tx_msg_t *args) {
 
 int app_lora_start_rx(void (*cb)(const char *, const int)) {
     if (!xRxTask) {
-        xTaskCreate(&rx_task, "app_lora_rx_task", 4096, cb, 5, &xRxTask);
+        xTaskCreate(&rx_task, "app_lora_rx_task", 3072, cb, 5, &xRxTask);
         return ESP_OK;
     }
     ESP_LOGI(TAG, "app_lora_rx_task already started");

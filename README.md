@@ -8,47 +8,59 @@ This is an ESP32+LoRa application that pairs with a [ThermoWorks Smoke X](https:
 
 I love the Smoke X's long RF range and the fact that it doesn't need an internet connection or mobile app to function. But the receiver unit only shows current/max/min probe readings, with no means of watching for trends. This ESP32+LoRa application allows Smoke X users to have all the benefits of the Smoke X and also record the data.
 
-### Prerequisites
+## Requirements
 
-To build the ESP32 application:
+### Hardware
+
+An ESP32 with attached Semtech SX1276 LoRa transceiver is required. A combined ESP32+LoRa development board such as the [Heltec WiFi LoRa 32 (V2)](https://heltec.org/project/wifi-lora-32/) is ideal, but any ESP32 board with a SPI connected SX1276 will work.
+
+- The Smoke X operates in the 900 MHz ISM range
+- The default SPI pin connections are: CS: 18, RST: 14, MOSI: 27, MISO: 19, SCK: 5
+- If your hardware is wired differently, update the pin assignments via `make menuconfig` prior to building
+
+### Software
 
 - ESP-IDF SDK v4.x (you may optionally install to the project directory with the `make sdk` target)
 - Node.js and npm (to build the web UI assets)
 
-To run the ESP32 application:
-
-- [Heltec WiFi LoRa 32 (V2)](https://heltec.org/project/wifi-lora-32/) or similar development board
-  - Note: Any ESP32 board with a SPI connected Semtech SX1276/1277/1279 LoRa transceiver will work
-    - The default SPI pin connections are: CS: 18, RST: 14, MOSI: 27, MISO: 19, SCK: 5
-    - If your hardware is wired differently, update the pin assignments via `make menuconfig` prior to building
+## Build
 
 ### Prepare Environment
 
-Clone the repo (with `--recurse-submodules`) and enter the directory.
+- Clone this repo (with `--recurse-submodules`) and enter the directory.
+- If you don't already have the ESP-IDF SDK, the `make sdk` target will download it for you:
 
 ```
-# Ensure ESP-IDF is installed and activated. If you are unsure, try the following:
 $ make sdk
+```
+
+- Activate ESP-IDF (either your preexisting one or the one downloaded from the previous step):
+
+```
 $ source ./esp-idf/export.sh
 ```
 
-### Build
+### Configure
 
-First run menuconfig to create a new sdkconfig.
+- Create sdkconfig file:
 
 ```
-$ make menuconfig
+$ make defconfig
 ```
 
-Then build and flash
+- Edit `CONFIG_ESPTOOLPY_PORT` as necessary to reflect your ESP32 serial port name, either with `make menuconfig` or by manually editing the sdkconfig file.
+
+### Build and Flash
+
+- Connect ESP32 to your computer and run:
 
 ```
 $ make flash
 ```
 
-## Device Configuration
+## Initial Application Setup
 
-After the ESP32 is flashed, several items need to be configured:
+After the ESP32 is flashed with the application, several items need to be configured and saved to NVRAM:
 
 - WLAN Network
 - Smoke X Pairing
@@ -66,15 +78,15 @@ You will be presented with a self-explanatory web UI to configure the device to 
 
 ### Smoke X Pairing
 
-The web UI will indicate that the device requires pairing to a Smoke X base unit. If the device is ever unpaired, it will automatically monitor the sync frequency of 920.0 MHz, and will pair with the first Smoke X sync transmission it receives. To pair, place the Smoke X base unit in sync mode. Within a few seconds, the base unit will beep and return to normal operation. At this point you can confirm in the web UI that the device is paired with a specific device ID and frequency. This is the only time the ESP32 will transmit a LoRa signal. The device may always be unpaired via the web UI.
+The web UI will indicate that the device requires pairing to a Smoke X base unit. If the device is ever unpaired, it will automatically monitor the sync frequency of 920.0 MHz, and will pair with the first Smoke X sync transmission it receives. To pair, place the Smoke X base unit in sync mode. Within a few seconds, the ESP32 will transmit a sync response, and the base unit will return to normal operation. At this point you can confirm in the web UI that the device is paired with a specific device ID and frequency. This is the only time the ESP32 will transmit a LoRa signal. The device may always be unpaired via the web UI.
 
 ### MQTT Setup
 
-The web UI is also used to configure the device to connect to an MQTT broker. The MQTT URI is the only mandatory field, the rest will depend on your MQTT broker configuration. MQTTS server auth is supported by entering a trusted CA PEM via the web UI. PKI client auth is not currently supported.
+The web UI is also used to configure the device to connect to an MQTT broker. The MQTT URI is the only mandatory field, the rest are optional and will depend on your specific MQTT broker configuration. MQTTS server authentication is supported by entering a trusted CA PEM via the web UI. PKI client auth is not currently supported.
 
 ## MQTT Schema
 
-If MQTT is configured, the application will publish status messages upon receipt of an RF transmission from the Smoke X base station. This occurs every thirty seconds. The published message contents are:
+If MQTT is configured and enabled, the application will publish status messages upon receipt of an RF transmission from the Smoke X base station. The base station transmits every thirty seconds. The published message contents are:
 
 ```json
 {
@@ -89,10 +101,11 @@ If MQTT is configured, the application will publish status messages upon receipt
   "probe_2_temp": 70.4,
   "probe_2_max": 91,
   "probe_2_min": 50,
-  // X4 models will also have probe 3 and 4 data
   "billows_attached": "OFF"
 }
 ```
+
+_NOTE:_ X4 devices will also include additional data for probes 3 and 4
 
 ## Home Assistant
 
@@ -100,15 +113,15 @@ This application supports [Home Assistant MQTT discovery](https://www.home-assis
 
 - Sensors
   - Current Temperature
-  - Min Measured Temperature
-  - Max Measured Temperature
+  - Alarm Min Temperature
+  - Alarm Max Temperature
   - Billows Set Temperature
 - Binary Sensors
   - Probe Attached
   - Billows Attached
   - Alarm Enabled
 
-After successful connection to the MQTT broker, the device will configure each sensor by publishing discovery messages similar to the following:
+After successful connection to the MQTT broker, the device will configure each sensor by publishing discovery messages similar to the following (one for each entity):
 
 ```json
 {
@@ -138,33 +151,27 @@ The application provides an HTTP API (used by the web UI's temperature history g
 
 ### GET /data
 
+Response:
+
 ```json
 {
-    "probe_1": {
-        "current_temp": 136.5,
-        "alarm_max": 185,
-        "alarm_min": 32,
-        "history": [
-            95.1,
-            .
-            .
-            .
-        ]
-    },
-    "probe_2": {
-        "current_temp": 229.2,
-        "alarm_max": 91,
-        "alarm_min": 50,
-        "history": [
-            165.7,
-            .
-            .
-            .
-        ]
-    },
-    "billows": false
+  "probe_1": {
+    "current_temp": 95.3,
+    "alarm_max": 185,
+    "alarm_min": 32,
+    "history": [95.1, 95.2, 95.3]
+  },
+  "probe_2": {
+    "current_temp": 165.9,
+    "alarm_max": 91,
+    "alarm_min": 50,
+    "history": [165.7, 165.8, 165.9]
+  },
+  "billows": false
 }
 ```
+
+_NOTE:_ X4 devices will also include additional data for probes 3 and 4
 
 ## LoRa
 
