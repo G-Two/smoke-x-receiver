@@ -1,7 +1,13 @@
 <template>
   <div id="wlan-config-form">
-    <b-overlay :show="!dataReceived" rounded="sm" variant="white" opacity=0.85 no-fade>
-    <center>
+    <b-overlay
+      :show="!dataReceived"
+      rounded="sm"
+      variant="white"
+      opacity="0.85"
+      no-fade
+    >
+      <center>
         <b-form>
           <label>Mode</label>
           <b-form-group>
@@ -43,12 +49,17 @@
           <label for="password" v-if="authType != 0">Password</label>
           <b-form-input id="password" v-model="password" v-if="authType != 0" />
           <center>
-          <b-button id="apply_button" block variant="primary" v-on:click.prevent="sendToServer"
-            >Save & Apply</b-button
-          ></center>
+            <b-button
+              id="apply_button"
+              block
+              variant="primary"
+              v-on:click.prevent="sendToServer"
+              >Save & Apply</b-button
+            >
+          </center>
         </b-form>
-    </center>
-      </b-overlay>
+      </center>
+    </b-overlay>
   </div>
 </template>
 
@@ -67,45 +78,49 @@ export default {
       dataReceived: false,
     };
   },
-  mounted: async function() {
+  mounted: async function () {
     axios
       .get("wlan-config")
-      .then(res => {
+      .then((res) => {
         console.log(res);
         this.mode = res.data.mode;
         this.authType = res.data.authType;
         this.ssid = res.data.ssid;
         this.username = res.data.username;
         this.password = res.data.password;
-        this.dataReceived = true
+        this.dataReceived = true;
       })
-      .catch(error => {
+      .catch((error) => {
         console.log(error);
       });
   },
   methods: {
     sendToServer() {
-      axios.post("wlan-config", {
-        mode: this.mode,
-        ssid: this.ssid,
-        authType: this.authType,
-        username: this.username,
-        password: this.password
-      });
-    }
-  }
+      if (confirm("Commit these settings to NVRAM?")) {
+        axios
+          .post("wlan-config", {
+            mode: this.mode,
+            ssid: this.ssid,
+            authType: this.authType,
+            username: this.username,
+            password: this.password,
+          })
+          .catch((error) => {
+            console.log(error);
+          });
+      }
+    },
+  },
 };
 </script>
 
 <style scoped>
-
 label {
   font-weight: bold;
   margin-bottom: 0;
 }
 
 #apply_button {
- width: 8rem
+  width: 8rem;
 }
-
 </style>

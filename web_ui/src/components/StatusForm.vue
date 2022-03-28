@@ -20,6 +20,7 @@ export default {
   name: "LineChartContainer",
   components: { LineChart },
   data: () => ({
+    timer: null,
     loaded: false,
     chartData: null,
     options: {
@@ -38,17 +39,12 @@ export default {
       },
     },
   }),
-  mounted: async function () {
-    axios
-      .get("data")
-      .then((res) => {
-        console.log(res);
-        this.chartData = this.convertData(res.data);
-        this.loaded = true;
-      })
-      .catch((error) => {
-        console.log(error);
-      });
+  created: async function () {
+    await this.getData();
+    this.timer = setInterval(this.getData, 30000);
+  },
+  beforeDestroy: function () {
+    clearInterval(this.timer);
   },
   methods: {
     convertData(data) {
@@ -81,6 +77,18 @@ export default {
           },
         ],
       };
+    },
+    async getData() {
+      axios
+        .get("data")
+        .then((res) => {
+          console.log(res);
+          this.chartData = this.convertData(res.data);
+          this.loaded = true;
+        })
+        .catch((error) => {
+          console.log(error);
+        });
     },
   },
 };
