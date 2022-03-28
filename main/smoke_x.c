@@ -17,8 +17,9 @@
 #define NUM_COMMAS_SUCCESS_MSG 2
 #define NUM_COMMAS_X2_STATE_MSG 16
 #define NUM_COMMAS_X4_STATE_MSG 26
-#define MIN_FREE_HEAP_SIZE 16384
-#define JSON_STR_LEN 40000
+#define MIN_FREE_HEAP_SIZE 32768
+#define MAX_RECORDS 1200
+#define JSON_STR_LEN 16000
 
 static const char *TAG = "smoke_x";
 static smoke_x_config_t config;
@@ -112,7 +113,8 @@ static void update_history() {
     }
 
     for (unsigned int i = 0; i < config.num_probes; i++) {
-        if (xPortGetFreeHeapSize() < MIN_FREE_HEAP_SIZE) {
+        if ((cJSON_GetArraySize(probes_history[0]) >= MAX_RECORDS) ||
+            (xPortGetFreeHeapSize() < MIN_FREE_HEAP_SIZE)) {
             cJSON_DeleteItemFromArray(probes_history[i], 0);
         }
         cJSON_AddItemToArray(probes_history[i],
