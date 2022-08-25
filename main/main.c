@@ -48,7 +48,9 @@ void smoke_x_event_handler(void* handler_arg, esp_event_base_t base,
 void run_when_disconnected(void* handler_arg, esp_event_base_t base, int32_t id,
                            void* event_data) {
     ESP_LOGI(TAG, "Wi-Fi connection lost");
-    app_mqtt_stop();
+    if (app_mqtt_is_connected()) {
+        app_mqtt_stop();
+    }
 }
 
 void run_when_ip_addr_obtained(void* handler_arg, esp_event_base_t base,
