@@ -44,7 +44,9 @@ $(eval $(call spiffs_create_partition_image,storage,web_ui/dist))
 www:
 	npm install --prefix web_ui
 	npm run --prefix web_ui build
-	find -E web_ui/dist -regex ".*/*\.(js|css|ico|html)" -delete
-	rm -f web_ui/dist/mockServiceWorker.js
+	find web_ui/dist -type f -name '*.js' -delete
+	find web_ui/dist -type f -name '*.css' -delete
+	find web_ui/dist -type f -name '*.ico' -delete
+	find web_ui/dist -type f -name '*.html' -delete
 
 endif
