@@ -130,9 +130,9 @@ static void rx_task(void *pvParameter) {
             rssi = lora_packet_rssi();
             snr = lora_packet_snr();
             buf[msg_len] = 0;
-            ESP_LOGD(TAG, "Packet received - Size: %d RSSI: %d, SNR: %f",
+            ESP_LOGI(TAG, "Packet received - Size: %d RSSI: %d, SNR: %f",
                      msg_len, rssi, snr);
-            ESP_LOGD(TAG, "%s", buf);
+            ESP_LOGI(TAG, "%s", buf);
             cb((char *)buf, msg_len);
             lora_receive();
         }
