@@ -14,7 +14,7 @@ I love the Smoke X's long RF range and the fact that it doesn't need an internet
 
 An ESP32 with attached Semtech SX1276 LoRa transceiver is required. A combined ESP32+LoRa development board such as the [Heltec WiFi LoRa 32 (V2)](https://heltec.org/project/wifi-lora-32/) is ideal, but any ESP32 board with a SPI connected SX1276 will work.
 
-- The Smoke X operates in the 900 MHz ISM range
+- The Smoke X operates in the 915 MHz ISM band
 - The default SPI pin connections are: CS: 18, RST: 14, MOSI: 27, MISO: 19, SCK: 5
 - If your hardware is wired differently, update the pin assignments via `make menuconfig` prior to building
 
@@ -78,7 +78,7 @@ You will be presented with a self-explanatory web UI to configure the device to 
 
 ### Smoke X Pairing
 
-The web UI will indicate that the device requires pairing to a Smoke X base unit. If the device is ever unpaired, it will automatically monitor the sync frequency of 920.0 MHz, and will pair with the first Smoke X sync transmission it receives. To pair, place the Smoke X base unit in sync mode. Within a few seconds, the ESP32 will transmit a sync response, and the base unit will return to normal operation. At this point you can confirm in the web UI that the device is paired with a specific device ID and frequency. This is the only time the ESP32 will transmit a LoRa signal. The device may always be unpaired via the web UI.
+The web UI will indicate that the device requires pairing to a Smoke X base unit. If the device is ever unpaired, it will alternate monitoring the two sync channels (920 MHz for X2, 915 MHz for X4), and will pair with the first Smoke X sync transmission it receives. To pair, place the Smoke X base unit in sync mode which will cause it to send sync bursts every three seconds. Once the ESP32 receives and parses the burst, it will transmit a sync response on the target frequency, and the base unit will return to normal operation. At this point you can confirm in the web UI that the device is paired with a specific device ID and frequency. This is the only time the ESP32 will transmit a LoRa signal. The device may always be unpaired via the web UI.
 
 ### MQTT Setup
 

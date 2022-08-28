@@ -194,28 +194,28 @@ int app_lora_get_params(app_lora_params_t *out_params) {
 int app_lora_set_params(app_lora_params_t *in_params,
                         xTaskHandle calling_task) {
     if (validate_params(in_params) == ESP_OK) {
-        ESP_LOGI(TAG, "Setting radio parameters");
+        ESP_LOGD(TAG, "Setting radio parameters");
         xSemaphoreTake(xRadioSemaphore, (TickType_t)10);
         lora_idle();
-        ESP_LOGI(TAG, "  Frequency %d", radio_params.frequency);
+        ESP_LOGD(TAG, "  Frequency %d", radio_params.frequency);
         lora_set_frequency(radio_params.frequency);
-        ESP_LOGI(TAG, "  Bandwidth %d", radio_params.bandwidth);
+        ESP_LOGD(TAG, "  Bandwidth %d", radio_params.bandwidth);
         lora_set_bandwidth(radio_params.bandwidth);
-        ESP_LOGI(TAG, "  Spreading Factor %d", radio_params.spreading_factor);
+        ESP_LOGD(TAG, "  Spreading Factor %d", radio_params.spreading_factor);
         lora_set_spreading_factor(radio_params.spreading_factor);
-        ESP_LOGI(TAG, "  Transmit Power %d", radio_params.tx_power);
+        ESP_LOGD(TAG, "  Transmit Power %d", radio_params.tx_power);
         lora_set_tx_power(radio_params.tx_power);
-        ESP_LOGI(TAG, "  Coding Rate %d", radio_params.coding_rate);
+        ESP_LOGD(TAG, "  Coding Rate %d", radio_params.coding_rate);
         lora_set_coding_rate(radio_params.coding_rate);
-        ESP_LOGI(TAG, "  Sync Word %d", radio_params.sync_word);
+        ESP_LOGD(TAG, "  Sync Word %d", radio_params.sync_word);
         lora_set_sync_word(radio_params.sync_word);
-        ESP_LOGI(TAG, "  Implicit Header %d", radio_params.implicit_hdr);
+        ESP_LOGD(TAG, "  Implicit Header %d", radio_params.implicit_hdr);
         if (radio_params.implicit_hdr) {
             lora_explicit_header_mode();
         } else {
             // lora_implicit_header_mode(radio_params.payload_len);
         }
-        ESP_LOGI(TAG, "  CRC Enable %d", radio_params.crc_on);
+        ESP_LOGD(TAG, "  CRC Enable %d", radio_params.crc_on);
         if (radio_params.crc_on)
             lora_enable_crc();
         else {
@@ -225,7 +225,7 @@ int app_lora_set_params(app_lora_params_t *in_params,
 
         if (calling_task) {
             xTaskNotifyGive(calling_task);
-            ESP_LOGI(
+            ESP_LOGD(
                 TAG,
                 "New radio parameters set\n f=%d\n bw=%d\n sf=%d\n "
                 "tx_power=%d\n cr=%d\n sync=%x\n impl_hdr=%d\n crc_on=%d\n",

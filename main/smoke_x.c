@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <esp_event.h>
 #include <esp_log.h>
 #include <nvs.h>
@@ -8,7 +9,8 @@
 #include "app_lora.h"
 #include "smoke_x.h"
 
-#define SMOKE_X_SYNC_FREQ 920000000
+#define SMOKE_X2_SYNC_FREQ 920000000
+#define SMOKE_X4_SYNC_FREQ 915000000
 #define SMOKE_X_RF_MIN 902000000
 #define SMOKE_X_RF_MAX 928000000
 #define SMOKE_X_NVS_NAMESPACE "smoke_x"
@@ -22,9 +24,11 @@
 #define JSON_STR_LEN 16000
 
 static const char *TAG = "smoke_x";
+static TaskHandle_t xSyncTask = NULL;
 static smoke_x_config_t config;
 static smoke_x_state_t state;
 static bool configured = false;
+static bool sync_received = false;
 static cJSON *root;
 static cJSON *probes[4];
 static cJSON *probes_history[4];
@@ -77,6 +81,7 @@ static unsigned int count_commas(const char *msg, const int len) {
 static void handle_sync_msg(const char *msg, const int len) {
     unsigned char freq_array[4];
     // Example sync message "020001,|dhHWl,160,32,69,54,"
+    sync_received = true;
     ESP_LOGI(TAG, "Received sync message: %s", msg);
     char *tmp = strdup(msg);
     strtok(tmp, ",");
@@ -104,6 +109,7 @@ static void handle_sync_msg(const char *msg, const int len) {
     } else {
         ESP_LOGE(TAG, "Frequency out of range %d", config.frequency);
         config.frequency = 0;
+        sync_received = false;
     }
 }
 
@@ -191,7 +197,7 @@ static esp_err_t read_config_from_nvram() {
 static void handle_rx(const char *msg, const int len) {
     switch (count_commas(msg, len)) {
         case NUM_COMMAS_SYNC_MSG:
-            if (!configured) {
+            if (!configured && !sync_received) {
                 handle_sync_msg(msg, len);
                 esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_SYNC, NULL, 0,
                                1000);
@@ -240,6 +246,38 @@ static void handle_rx(const char *msg, const int len) {
     }
 }
 
+static void sync_task(void *pvParameter) {
+    ESP_LOGI(TAG, "Starting Smoke X Sync");
+    int target_freq = SMOKE_X2_SYNC_FREQ;
+    while (1) {
+        if (!configured && !sync_received) {
+            target_freq = SMOKE_X2_SYNC_FREQ == target_freq
+                              ? SMOKE_X4_SYNC_FREQ
+                              : SMOKE_X2_SYNC_FREQ;
+            set_frequency(target_freq);
+        }
+        vTaskDelay(pdMS_TO_TICKS(3300));
+    }
+}
+
+esp_err_t start_sync() {
+    if (!xSyncTask) {
+        xTaskCreate(&sync_task, "smoke_x_sync_task", 2048, NULL, 5, &xSyncTask);
+        return ESP_OK;
+    }
+    ESP_LOGI(TAG, "smoke_x_sync_task already started");
+    return ESP_FAIL;
+}
+
+esp_err_t stop_sync() {
+    if (xSyncTask) {
+        ESP_LOGI(TAG, "Stopping smoke_x_sync_task");
+        vTaskDelete(xSyncTask);
+        xSyncTask = NULL;
+    }
+    return ESP_OK;
+}
+
 esp_err_t smoke_x_init() {
 #if APP_DEBUG > 0
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
@@ -251,7 +289,7 @@ esp_err_t smoke_x_init() {
         if (!err && configured) {
             err = set_frequency(config.frequency);
         } else if (!err) {
-            err = set_frequency(SMOKE_X_SYNC_FREQ);
+            start_sync();
         }
     }
     return err;
@@ -264,7 +302,7 @@ esp_err_t smoke_x_sync() {
     config.frequency = 0;
     save_config_to_nvram();
     configured = false;
-    esp_err_t err = set_frequency(SMOKE_X_SYNC_FREQ);
+    esp_err_t err = start_sync();
     return err;
 }
 
