@@ -55,28 +55,69 @@ export default {
         labels[i] = now - i * 30000;
       }
       labels.reverse();
-      console.log(labels);
-      return {
-        labels: labels,
-        datasets: [
-          {
-            label: "Probe 1",
-            data: data.probe_1.history,
-            fill: false,
-            borderColor: "rgb(200, 75, 75)",
-            tension: 0,
-            pointRadius: 0,
-          },
-          {
-            label: "Probe 2",
-            data: data.probe_2.history,
-            fill: false,
-            borderColor: "rgb(75, 192, 192)",
-            tension: 0,
-            pointRadius: 0,
-          },
-        ],
-      };
+      console.log(Object.values(data).length)
+      if (Object.values(data).length == 3){
+        return {
+          labels: labels,
+          datasets: [
+            {
+              label: "Probe 1",
+              data: data.probe_1.history,
+              fill: false,
+              borderColor: "rgb(200, 75, 75)",
+              tension: 0,
+              pointRadius: 0,
+            },
+            {
+              label: "Probe 2",
+              data: data.probe_2.history,
+              fill: false,
+              borderColor: "rgb(75, 192, 192)",
+              tension: 0,
+              pointRadius: 0,
+            }
+          ],
+        };
+      }
+      else if (Object.values(data).length == 5){
+        return {
+          labels: labels,
+          datasets: [
+            {
+              label: "Probe 1",
+              data: data.probe_1.history,
+              fill: false,
+              borderColor: "rgb(200, 75, 75)",
+              tension: 0,
+              pointRadius: 0,
+            },
+            {
+              label: "Probe 2",
+              data: data.probe_2.history,
+              fill: false,
+              borderColor: "rgb(75, 192, 192)",
+              tension: 0,
+              pointRadius: 0,
+            },
+            {
+              label: "Probe 3",
+              data: data.probe_3.history,
+              fill: false,
+              borderColor: "rgb(75, 200, 75)",
+              tension: 0,
+              pointRadius: 0,
+            },
+            {
+              label: "Probe 4",
+              data: data.probe_4.history,
+              fill: false,
+              borderColor: "rgb(192, 75, 192)",
+              tension: 0,
+              pointRadius: 0,
+            },
+          ],
+        };
+      }
     },
     async getData() {
       axios
