@@ -342,10 +342,10 @@ static esp_err_t wifi_config_set_handler(httpd_req_t *req) {
             sizeof(app_wifi_params.ssid));
     strncpy(app_wifi_params.username,
             cJSON_GetObjectItem(root, "username")->valuestring,
-            sizeof(app_wifi_params.ssid));
+            sizeof(app_wifi_params.username));
     strncpy(app_wifi_params.password,
             cJSON_GetObjectItem(root, "password")->valuestring,
-            sizeof(app_wifi_params.ssid));
+            sizeof(app_wifi_params.password));
 
     cJSON_Delete(root);
     free(param_str);
