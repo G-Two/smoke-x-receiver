@@ -8,7 +8,7 @@
 #include "smoke_x.h"
 
 #define NVS_NAMESPACE "mqtt_config"
-#define MQTT_BUF_SIZE 512
+#define MQTT_BUF_SIZE 1024
 
 #define BOOL_TO_STR(b) b ? "ON" : "OFF"
 
