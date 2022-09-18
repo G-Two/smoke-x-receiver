@@ -1,4 +1,3 @@
-
 <template>
   <div class="home">
     <status-form />
@@ -10,9 +9,9 @@
 import StatusForm from "@/components/StatusForm.vue";
 
 export default {
-  name: "Status",
+  name: "StatusComponent",
   components: {
-    StatusForm
-  }
+    StatusForm,
+  },
 };
 </script>

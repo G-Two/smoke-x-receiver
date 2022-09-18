@@ -9,9 +9,9 @@
 import MqttConfigForm from "@/components/MqttConfigForm.vue";
 
 export default {
-  name: "Mqtt",
+  name: "MqttComponent",
   components: {
-    MqttConfigForm
-  }
+    MqttConfigForm,
+  },
 };
 </script>

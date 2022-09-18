@@ -7,7 +7,7 @@
       opacity="0.15"
       no-fade
     >
-      <line-chart :chartData="chartData" :options="options" />
+      <line-chart :chart-data="chartData" :options="options" />
     </b-overlay>
   </div>
 </template>
@@ -55,8 +55,8 @@ export default {
         labels[i] = now - i * 30000;
       }
       labels.reverse();
-      console.log(Object.values(data).length)
-      if (Object.values(data).length == 3){
+      console.log(Object.values(data).length);
+      if (Object.values(data).length == 3) {
         return {
           labels: labels,
           datasets: [
@@ -75,11 +75,10 @@ export default {
               borderColor: "rgb(75, 192, 192)",
               tension: 0,
               pointRadius: 0,
-            }
+            },
           ],
         };
-      }
-      else if (Object.values(data).length == 5){
+      } else if (Object.values(data).length == 5) {
         return {
           labels: labels,
           datasets: [

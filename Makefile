@@ -21,7 +21,7 @@ help:
 	@echo ""
 
 sdk:
-	git clone -b v4.3.2 --recursive https://github.com/espressif/esp-idf.git esp-idf
+	git clone -b v4.4.2 --recursive https://github.com/espressif/esp-idf.git esp-idf
 	$(IDF_PATH)/install.sh
 	@echo "=============================================================================================="
 	@echo "ESP SDK installed at $(IDF_PATH). Use the following to activate the SDK:"
@@ -48,5 +48,9 @@ www:
 	find web_ui/dist -type f -name '*.css' -delete
 	find web_ui/dist -type f -name '*.ico' -delete
 	find web_ui/dist -type f -name '*.html' -delete
+
+mock-www:
+	npm install --prefix web_ui
+	npm run serve --prefix web_ui
 
 endif

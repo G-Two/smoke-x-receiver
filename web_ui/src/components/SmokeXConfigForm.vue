@@ -22,11 +22,11 @@
           <center>
             <div v-if="dataReceived">
               <b-button
+                v-if="isPaired == true"
                 id="unpair_button"
                 block
                 variant="danger"
-                v-if="isPaired == true"
-                v-on:click.prevent="unpair()"
+                @click.prevent="unpair()"
               >
                 Unpair
               </b-button>
@@ -48,7 +48,7 @@
 import * as axios from "axios";
 
 export default {
-  name: "smoke-x-config-form",
+  name: "SmokeXConfigForm",
   data() {
     return {
       isPaired: false,
@@ -86,7 +86,6 @@ export default {
   },
 };
 </script>
-
 
 <style scoped>
 label {

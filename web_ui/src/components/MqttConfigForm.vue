@@ -10,8 +10,8 @@
       >
         <form>
           <b-form-checkbox
-            name="enabled-switch"
             v-model="enabled"
+            name="enabled-switch"
             switch
             size="lg"
           >
@@ -32,8 +32,8 @@
             <b-form-textarea id="ca_cert" v-model="ca_cert" rows="20" />
 
             <b-form-checkbox
-              name="ha-discovery-switch"
               v-model="ha_discovery"
+              name="ha-discovery-switch"
               switch
               size="lg"
             >
@@ -59,9 +59,10 @@
               id="apply_button"
               block
               variant="primary"
-              v-on:click.prevent="sendToServer"
-              >Save & Apply</b-button
+              @click.prevent="sendToServer"
             >
+              Save & Apply
+            </b-button>
           </center>
         </form>
       </b-overlay>
@@ -73,7 +74,7 @@
 import * as axios from "axios";
 
 export default {
-  name: "mqtt-config-form",
+  name: "MqttConfigForm",
   data() {
     return {
       uri: "",

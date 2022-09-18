@@ -16,46 +16,49 @@
               v-b-tooltip.hover.left
               title="Connect to existing wireless network"
               value="1"
-              >Client</b-form-radio
             >
+              Client
+            </b-form-radio>
             <b-form-radio
               v-model.number="mode"
               v-b-tooltip.hover.left
               title="Other devices connect directly to this device"
               value="2"
-              >Access Point</b-form-radio
             >
+              Access Point
+            </b-form-radio>
           </b-form-group>
 
           <label>Authentication</label>
           <b-form-group>
-            <b-form-radio v-model.number="authType" value="0"
-              >Open</b-form-radio
-            >
-            <b-form-radio v-model.number="authType" value="3"
-              >WPA2 PSK</b-form-radio
-            >
-            <b-form-radio v-model.number="authType" v-if="mode == 1" value="5"
-              >WPA2 Enterprise</b-form-radio
-            >
+            <b-form-radio v-model.number="authType" value="0">
+              Open
+            </b-form-radio>
+            <b-form-radio v-model.number="authType" value="3">
+              WPA2 PSK
+            </b-form-radio>
+            <b-form-radio v-if="mode == 1" v-model.number="authType" value="5">
+              WPA2 Enterprise
+            </b-form-radio>
           </b-form-group>
 
           <label for="SSID">SSID</label>
           <b-form-input id="SSID" v-model="ssid" />
 
-          <label for="username" v-if="authType == 5">Username</label>
-          <b-form-input id="username" v-model="username" v-if="authType == 5" />
+          <label v-if="authType == 5" for="username">Username</label>
+          <b-form-input v-if="authType == 5" id="username" v-model="username" />
 
-          <label for="password" v-if="authType != 0">Password</label>
-          <b-form-input id="password" v-model="password" v-if="authType != 0" />
+          <label v-if="authType != 0" for="password">Password</label>
+          <b-form-input v-if="authType != 0" id="password" v-model="password" />
           <center>
             <b-button
               id="apply_button"
               block
               variant="primary"
-              v-on:click.prevent="sendToServer"
-              >Save & Apply</b-button
+              @click.prevent="sendToServer"
             >
+              Save & Apply
+            </b-button>
           </center>
         </b-form>
       </center>
@@ -67,7 +70,7 @@
 import * as axios from "axios";
 
 export default {
-  name: "wlan-config-form",
+  name: "WlanConfigForm",
   data() {
     return {
       mode: 1,

@@ -9,9 +9,9 @@
 import WlanConfigForm from "@/components/WlanConfigForm.vue";
 
 export default {
-  name: "Wlan",
+  name: "WlanComponent",
   components: {
-    WlanConfigForm
-  }
+    WlanConfigForm,
+  },
 };
 </script>

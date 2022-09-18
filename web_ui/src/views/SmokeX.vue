@@ -9,9 +9,9 @@
 import SmokeXConfigForm from "@/components/SmokeXConfigForm.vue";
 
 export default {
-  name: "Smoke X",
+  name: "PairingComponent",
   components: {
-    SmokeXConfigForm
-  }
+    SmokeXConfigForm,
+  },
 };
 </script>
