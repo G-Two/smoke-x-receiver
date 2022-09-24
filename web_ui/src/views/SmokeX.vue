@@ -6,12 +6,12 @@
 
 <script>
 // @ is an alias to /src
-import SmokeXConfigForm from "@/components/SmokeXConfigForm.vue";
+import SmokeXConfigForm from "@/components/SmokeXConfigForm.vue"
 
 export default {
   name: "PairingComponent",
   components: {
     SmokeXConfigForm,
   },
-};
+}
 </script>

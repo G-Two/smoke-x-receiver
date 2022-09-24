@@ -2,11 +2,21 @@
   <div id="app">
     <div id="nav">
       <h2>Smoke X Receiver</h2>
-      <router-link to="/"> Status </router-link> |
-      <router-link to="/wlan"> WLAN </router-link> |
-      <router-link to="/pairing"> Pairing </router-link> |
-      <router-link to="/mqtt"> MQTT </router-link> |
-      <router-link to="/lora"> LoRa </router-link>
+      <router-link to="/">
+        Status
+      </router-link> |
+      <router-link to="/wlan">
+        WLAN
+      </router-link> |
+      <router-link to="/pairing">
+        Pairing
+      </router-link> |
+      <router-link to="/mqtt">
+        MQTT
+      </router-link> |
+      <router-link to="/lora">
+        LoRa
+      </router-link>
     </div>
     <div id="page">
       <router-view />

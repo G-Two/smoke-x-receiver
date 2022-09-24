@@ -9,9 +9,9 @@
         no-fade
       >
         <form class="status">
-          <b>Status:</b> {{ isPaired ? "PAIRED" : "NOT PAIRED" }} <br />
-          <b>Model:</b> {{ deviceModel ? deviceModel : "---" }} <br />
-          <b>Device ID:</b> {{ deviceId ? deviceId : "---" }} <br />
+          <b>Status:</b> {{ isPaired ? "PAIRED" : "NOT PAIRED" }} <br>
+          <b>Model:</b> {{ deviceModel ? deviceModel : "---" }} <br>
+          <b>Device ID:</b> {{ deviceId ? deviceId : "---" }} <br>
           <b>Frequency:</b>
           {{
             currentFrequency
@@ -45,7 +45,7 @@
 </template>
 
 <script>
-import * as axios from "axios";
+import * as axios from "axios"
 
 export default {
   name: "SmokeXConfigForm",
@@ -56,35 +56,35 @@ export default {
       deviceId: null,
       deviceModel: null,
       dataReceived: false,
-    };
+    }
   },
   mounted: async function () {
     axios
       .get("pairing-status")
       .then((res) => {
-        this.isPaired = res.data.isPaired;
-        this.currentFrequency = res.data.currentFrequency;
-        this.deviceId = res.data.deviceId;
-        this.deviceModel = res.data.deviceModel;
-        this.dataReceived = true;
+        this.isPaired = res.data.isPaired
+        this.currentFrequency = res.data.currentFrequency
+        this.deviceId = res.data.deviceId
+        this.deviceModel = res.data.deviceModel
+        this.dataReceived = true
       })
       .catch((error) => {
-        console.log(error);
-      });
+        console.log(error)
+      })
   },
   methods: {
     unpair() {
       var json = {
         command: "unpair",
-      };
+      }
       if (confirm("Do you really want to unpair?")) {
         axios.post("cmd", json).catch((error) => {
-          console.log(error);
-        });
+          console.log(error)
+        })
       }
     },
   },
-};
+}
 </script>
 
 <style scoped>

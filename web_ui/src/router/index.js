@@ -1,8 +1,8 @@
-import Vue from "vue";
-import VueRouter from "vue-router";
-import Wlan from "../views/Wlan.vue";
+import Vue from "vue"
+import VueRouter from "vue-router"
+import Wlan from "../views/Wlan.vue"
 
-Vue.use(VueRouter);
+Vue.use(VueRouter)
 
 const routes = [
   {
@@ -46,12 +46,12 @@ const routes = [
     component: () =>
       import(/* webpackChunkName: "about" */ "../views/Status.vue"),
   },
-];
+]
 
 const router = new VueRouter({
   mode: "history",
   base: process.env.BASE_URL,
   routes,
-});
+})
 
-export default router;
+export default router

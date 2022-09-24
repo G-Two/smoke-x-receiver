@@ -19,17 +19,33 @@
           </b-form-checkbox>
 
           <div v-if="enabled">
-            <hr />
+            <hr>
             <label for="uri">MQTT Broker URI</label>
-            <b-form-input id="uri" v-model="uri" />
+            <b-form-input
+              id="uri"
+              v-model="uri"
+            />
             <label for="identity">Identity</label>
-            <b-form-input id="identity" v-model="identity" />
+            <b-form-input
+              id="identity"
+              v-model="identity"
+            />
             <label for="username">Username</label>
-            <b-form-input id="username" v-model="username" />
+            <b-form-input
+              id="username"
+              v-model="username"
+            />
             <label for="username">Password</label>
-            <b-form-input id="password" v-model="password" />
+            <b-form-input
+              id="password"
+              v-model="password"
+            />
             <label for="ca_cert">CA Certificate</label>
-            <b-form-textarea id="ca_cert" v-model="ca_cert" rows="20" />
+            <b-form-textarea
+              id="ca_cert"
+              v-model="ca_cert"
+              rows="20"
+            />
 
             <b-form-checkbox
               v-model="ha_discovery"
@@ -39,20 +55,32 @@
             >
               Enable Home Assistant Device Discovery
             </b-form-checkbox>
-            <hr />
+            <hr>
             <div v-if="ha_discovery">
               <label for="ha_base_topic">Home Assistant Base Topic</label>
-              <b-form-input id="ha_base_topic" v-model="ha_base_topic" />
+              <b-form-input
+                id="ha_base_topic"
+                v-model="ha_base_topic"
+              />
 
               <label for="ha_status_topic">Home Assistant Status Topic</label>
-              <b-form-input id="ha_status_topic" v-model="ha_status_topic" />
+              <b-form-input
+                id="ha_status_topic"
+                v-model="ha_status_topic"
+              />
 
               <label for="ha_birth_payload">Home Assistant Birth Payload</label>
-              <b-form-input id="ha_birth_payload" v-model="ha_birth_payload" />
+              <b-form-input
+                id="ha_birth_payload"
+                v-model="ha_birth_payload"
+              />
             </div>
 
             <label for="state_topic">Smoke X State Topic</label>
-            <b-form-input id="state_topic" v-model="state_topic" />
+            <b-form-input
+              id="state_topic"
+              v-model="state_topic"
+            />
           </div>
           <center>
             <b-button
@@ -71,7 +99,7 @@
 </template>
 
 <script>
-import * as axios from "axios";
+import * as axios from "axios"
 
 export default {
   name: "MqttConfigForm",
@@ -89,29 +117,29 @@ export default {
       ha_birth_payload: "",
       state_topic: "",
       dataReceived: false,
-    };
+    }
   },
   mounted: async function () {
     axios
       .get("mqtt-config")
       .then((res) => {
-        console.log(res);
-        this.uri = res.data.uri;
-        this.identity = res.data.identity;
-        this.username = res.data.username;
-        this.password = res.data.password;
-        this.ca_cert = res.data.ca_cert;
-        this.enabled = res.data.enabled;
-        this.ha_discovery = res.data.ha_discovery;
-        this.ha_base_topic = res.data.ha_base_topic;
-        this.ha_status_topic = res.data.ha_status_topic;
-        this.ha_birth_payload = res.data.ha_birth_payload;
-        this.state_topic = res.data.state_topic;
-        this.dataReceived = true;
+        console.log(res)
+        this.uri = res.data.uri
+        this.identity = res.data.identity
+        this.username = res.data.username
+        this.password = res.data.password
+        this.ca_cert = res.data.ca_cert
+        this.enabled = res.data.enabled
+        this.ha_discovery = res.data.ha_discovery
+        this.ha_base_topic = res.data.ha_base_topic
+        this.ha_status_topic = res.data.ha_status_topic
+        this.ha_birth_payload = res.data.ha_birth_payload
+        this.state_topic = res.data.state_topic
+        this.dataReceived = true
       })
       .catch((error) => {
-        console.log(error);
-      });
+        console.log(error)
+      })
   },
   methods: {
     sendToServer() {
@@ -131,12 +159,12 @@ export default {
             state_topic: this.state_topic,
           })
           .catch((error) => {
-            console.log(error);
-          });
+            console.log(error)
+          })
       }
     },
   },
-};
+}
 </script>
 
 <style scoped>

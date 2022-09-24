@@ -9,10 +9,8 @@
         no-fade
       >
         <form id="config-form">
-          <label for="frequency"
-            ><b>Frequency:</b>
-            {{ (selectedFrequency / 1000000).toPrecision(6) }} MHz</label
-          >
+          <label for="frequency"><b>Frequency:</b>
+            {{ (selectedFrequency / 1000000).toPrecision(6) }} MHz</label>
 
           <b-form-input
             id="frequency"
@@ -24,10 +22,8 @@
             step="5000"
           />
 
-          <label for="bandwidth"
-            ><b>Bandwidth:</b>
-            {{ calcBandwidth(selectedBandwidthIndex) / 1000 }} kHz</label
-          >
+          <label for="bandwidth"><b>Bandwidth:</b>
+            {{ calcBandwidth(selectedBandwidthIndex) / 1000 }} kHz</label>
 
           <b-form-input
             id="bandwidth"
@@ -38,9 +34,7 @@
             max="6"
           />
 
-          <label for="spreading-factor"
-            ><b>Spreading Factor:</b> {{ selectedSpreadingFactor }}</label
-          >
+          <label for="spreading-factor"><b>Spreading Factor:</b> {{ selectedSpreadingFactor }}</label>
 
           <b-form-input
             id="spreading-factor"
@@ -51,9 +45,10 @@
             max="12"
           />
 
-          <label class="form-label" for="tx-power"
-            ><b>Transmit Power:</b> {{ selectedTxPower }}</label
-          >
+          <label
+            class="form-label"
+            for="tx-power"
+          ><b>Transmit Power:</b> {{ selectedTxPower }}</label>
 
           <b-form-input
             id="tx-power"
@@ -64,9 +59,7 @@
             max="17"
           />
 
-          <label for="coding-rate"
-            ><b>Coding Rate:</b> {{ selectedCodingRate }}</label
-          >
+          <label for="coding-rate"><b>Coding Rate:</b> {{ selectedCodingRate }}</label>
 
           <b-form-input
             id="coding-rate"
@@ -77,9 +70,7 @@
             max="8"
           />
 
-          <label for="preamble-length"
-            ><b>Preamble Length:</b> {{ selectedPreambleLength }}</label
-          >
+          <label for="preamble-length"><b>Preamble Length:</b> {{ selectedPreambleLength }}</label>
 
           <b-form-input
             id="preamble-length"
@@ -90,11 +81,9 @@
             max="65535"
           />
 
-          <label for="sync-word"
-            ><b>Sync Word:</b> 0x{{
-              (selectedSyncWord * 1).toString(16).toUpperCase()
-            }}</label
-          >
+          <label for="sync-word"><b>Sync Word:</b> 0x{{
+            (selectedSyncWord * 1).toString(16).toUpperCase()
+          }}</label>
 
           <b-form-input
             id="sync-word"
@@ -115,7 +104,10 @@
           </b-form-checkbox>
 
           <!-- BEGIN Implicit Header Configuration Items -->
-          <div v-if="switchImplicitHeader" id="implicit-header-items">
+          <div
+            v-if="switchImplicitHeader"
+            id="implicit-header-items"
+          >
             <b-form-checkbox
               v-model="switchEnableCRC"
               name="enable-crc-switch"
@@ -125,9 +117,7 @@
               Enable CRC
             </b-form-checkbox>
 
-            <label for="message-length"
-              >Message Length {{ selectedMessageLength }}</label
-            >
+            <label for="message-length">Message Length {{ selectedMessageLength }}</label>
             <b-form-input
               id="message-length"
               v-model.number="selectedMessageLength"
@@ -140,13 +130,19 @@
 
           <!-- END Implicit Header Configuration Items -->
           <center>
-            <b-button block variant="primary" @click.prevent="sendToServer">
+            <b-button
+              block
+              variant="primary"
+              @click.prevent="sendToServer"
+            >
               Set LoRa Config
             </b-button>
           </center>
         </form>
         <div>
-          <h4 for="tx-form">Transmit Message</h4>
+          <h4 for="tx-form">
+            Transmit Message
+          </h4>
           <form id="tx-form">
             <b-form-input
               v-model="transmitMessage"
@@ -197,7 +193,9 @@
             </b-row>
           </form>
 
-          <h4 for="rx-form">Receive Messages</h4>
+          <h4 for="rx-form">
+            Receive Messages
+          </h4>
           <form id="rx-form">
             <b-row>
               <b-col>
@@ -231,7 +229,7 @@
 </template>
 
 <script>
-import * as axios from "axios";
+import * as axios from "axios"
 
 export default {
   name: "LoraConfigForm",
@@ -253,31 +251,31 @@ export default {
       switchTxRepeatMessage: false,
       selectedTxInterval: 5000,
       dataReceived: false,
-    };
+    }
   },
   mounted: async function () {
     axios
       .get("rf-params")
       .then((res) => {
-        console.log(res);
-        this.selectedFrequency = res.data.frequency;
-        this.selectedTxPower = res.data.txPower;
+        console.log(res)
+        this.selectedFrequency = res.data.frequency
+        this.selectedTxPower = res.data.txPower
         this.selectedBandwidthIndex = this.calcBandwidthIndex(
           res.data.bandwidth
-        );
-        this.selectedBandwidth = res.data.bandwidth;
-        this.selectedCodingRate = res.data.codingRate;
-        this.selectedSpreadingFactor = res.data.spreadingFactor;
-        this.selectedMessageLength = res.data.messageLength;
-        this.selectedPreambleLength = res.data.preambleLength;
-        this.selectedSyncWord = res.data.syncWord;
-        this.switchImplicitHeader = res.data.implicitHeader;
-        this.switchEnableCRC = res.data.enableCRC;
-        this.dataReceived = true;
+        )
+        this.selectedBandwidth = res.data.bandwidth
+        this.selectedCodingRate = res.data.codingRate
+        this.selectedSpreadingFactor = res.data.spreadingFactor
+        this.selectedMessageLength = res.data.messageLength
+        this.selectedPreambleLength = res.data.preambleLength
+        this.selectedSyncWord = res.data.syncWord
+        this.switchImplicitHeader = res.data.implicitHeader
+        this.switchEnableCRC = res.data.enableCRC
+        this.dataReceived = true
       })
       .catch((error) => {
-        console.log(error);
-      });
+        console.log(error)
+      })
   },
   methods: {
     sendToServer() {
@@ -292,37 +290,37 @@ export default {
         messageLength: this.selectedMessageLength,
         preambleLength: this.selectedPreambleLength,
         syncWord: this.selectedSyncWord,
-      });
+      })
     },
     sendCmd(cmd) {
       var json = {
         command: cmd,
-      };
+      }
       if (cmd == "startTx") {
-        json.message = this.transmitMessage;
+        json.message = this.transmitMessage
         if (this.switchTxRepeatMessage) {
-          json.repeatInterval = this.selectedTxInterval;
+          json.repeatInterval = this.selectedTxInterval
         }
       }
-      axios.post("cmd", json);
-      console.log(cmd);
+      axios.post("cmd", json)
+      console.log(cmd)
     },
     calcBandwidth(input) {
-      var retVal = 7812.5;
+      var retVal = 7812.5
       for (var i = input; i > 0; i--) {
-        retVal *= 2;
+        retVal *= 2
       }
-      this.selectedBandwidth = retVal;
-      return retVal;
+      this.selectedBandwidth = retVal
+      return retVal
     },
     calcBandwidthIndex(input) {
       for (var i = 0; input >= 15625; i++) {
-        input /= 2;
+        input /= 2
       }
-      return i;
+      return i
     },
   },
-};
+}
 </script>
 
 <style scoped>

@@ -7,14 +7,17 @@
       opacity="0.15"
       no-fade
     >
-      <line-chart :chart-data="chartData" :options="options" />
+      <line-chart
+        :chart-data="chartData"
+        :options="options"
+      />
     </b-overlay>
   </div>
 </template>
 
 <script>
-import LineChart from "./LineChart.js";
-import * as axios from "axios";
+import LineChart from "./LineChart.js"
+import * as axios from "axios"
 
 export default {
   name: "LineChartContainer",
@@ -40,22 +43,22 @@ export default {
     },
   }),
   created: async function () {
-    await this.getData();
-    this.timer = setInterval(this.getData, 30000);
+    await this.getData()
+    this.timer = setInterval(this.getData, 30000)
   },
   beforeDestroy: function () {
-    clearInterval(this.timer);
+    clearInterval(this.timer)
   },
   methods: {
     convertData(data) {
-      const date = new Date();
-      const now = date.getTime();
-      const labels = Array(data.probe_1.history.length);
+      const date = new Date()
+      const now = date.getTime()
+      const labels = Array(data.probe_1.history.length)
       for (var i = data.probe_1.history.length - 1; i >= 0; i--) {
-        labels[i] = now - i * 30000;
+        labels[i] = now - i * 30000
       }
-      labels.reverse();
-      console.log(Object.values(data).length);
+      labels.reverse()
+      console.log(Object.values(data).length)
       if (Object.values(data).length == 3) {
         return {
           labels: labels,
@@ -77,7 +80,7 @@ export default {
               pointRadius: 0,
             },
           ],
-        };
+        }
       } else if (Object.values(data).length == 5) {
         return {
           labels: labels,
@@ -115,21 +118,21 @@ export default {
               pointRadius: 0,
             },
           ],
-        };
+        }
       }
     },
     async getData() {
       axios
         .get("data")
         .then((res) => {
-          console.log(res);
-          this.chartData = this.convertData(res.data);
-          this.loaded = true;
+          console.log(res)
+          this.chartData = this.convertData(res.data)
+          this.loaded = true
         })
         .catch((error) => {
-          console.log(error);
-        });
+          console.log(error)
+        })
     },
   },
-};
+}
 </script>

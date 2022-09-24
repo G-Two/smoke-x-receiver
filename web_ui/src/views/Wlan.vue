@@ -6,12 +6,12 @@
 
 <script>
 // @ is an alias to /src
-import WlanConfigForm from "@/components/WlanConfigForm.vue";
+import WlanConfigForm from "@/components/WlanConfigForm.vue"
 
 export default {
   name: "WlanComponent",
   components: {
     WlanConfigForm,
   },
-};
+}
 </script>

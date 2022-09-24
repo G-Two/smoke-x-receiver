@@ -6,4 +6,4 @@ module.exports = {
       jsconfig: ".jsconfig.json",
     },
   ],
-};
+}

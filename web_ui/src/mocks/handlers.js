@@ -1,4 +1,4 @@
-import { rest } from "msw";
+import { rest } from "msw"
 
 export default [
   rest.get("/data", (req, res, ctx) => {
@@ -73,7 +73,7 @@ export default [
         },
         billows: false,
       })
-    );
+    )
   }),
   rest.get("/wlan-config", (req, res, ctx) => {
     return res(
@@ -85,7 +85,7 @@ export default [
         username: "a_username",
         password: "a_password",
       })
-    );
+    )
   }),
   rest.get("/pairing-status", (req, res, ctx) => {
     return res(
@@ -96,7 +96,7 @@ export default [
         currentFrequency: 915000000,
         deviceModel: "X2",
       })
-    );
+    )
   }),
   rest.get("/mqtt-config", (req, res, ctx) => {
     return res(
@@ -117,7 +117,7 @@ Paste Certificate Here\n\
         ha_birth_payload: "online",
         state_topic: "homeassistant/smoke-x/state",
       })
-    );
+    )
   }),
   rest.get("/rf-params", (req, res, ctx) => {
     return res(
@@ -134,6 +134,6 @@ Paste Certificate Here\n\
         preambleLength: 10,
         syncWord: 0x12,
       })
-    );
+    )
   }),
-];
+]

@@ -1,4 +1,4 @@
-const CompressionPlugin = require("compression-webpack-plugin");
+const CompressionPlugin = require("compression-webpack-plugin")
 
 module.exports = {
   filenameHashing: false,
@@ -14,8 +14,8 @@ module.exports = {
 
   chainWebpack: (config) => {
     config.plugin("html").tap((args) => {
-      args[0].title = "Smoke X Receiver";
-      return args;
-    });
+      args[0].title = "Smoke X Receiver"
+      return args
+    })
   },
-};
+}

@@ -6,12 +6,12 @@
 
 <script>
 // @ is an alias to /src
-import MqttConfigForm from "@/components/MqttConfigForm.vue";
+import MqttConfigForm from "@/components/MqttConfigForm.vue"
 
 export default {
   name: "MqttComponent",
   components: {
     MqttConfigForm,
   },
-};
+}
 </script>

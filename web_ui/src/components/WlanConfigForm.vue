@@ -31,25 +31,52 @@
 
           <label>Authentication</label>
           <b-form-group>
-            <b-form-radio v-model.number="authType" value="0">
+            <b-form-radio
+              v-model.number="authType"
+              value="0"
+            >
               Open
             </b-form-radio>
-            <b-form-radio v-model.number="authType" value="3">
+            <b-form-radio
+              v-model.number="authType"
+              value="3"
+            >
               WPA2 PSK
             </b-form-radio>
-            <b-form-radio v-if="mode == 1" v-model.number="authType" value="5">
+            <b-form-radio
+              v-if="mode == 1"
+              v-model.number="authType"
+              value="5"
+            >
               WPA2 Enterprise
             </b-form-radio>
           </b-form-group>
 
           <label for="SSID">SSID</label>
-          <b-form-input id="SSID" v-model="ssid" />
+          <b-form-input
+            id="SSID"
+            v-model="ssid"
+          />
 
-          <label v-if="authType == 5" for="username">Username</label>
-          <b-form-input v-if="authType == 5" id="username" v-model="username" />
+          <label
+            v-if="authType == 5"
+            for="username"
+          >Username</label>
+          <b-form-input
+            v-if="authType == 5"
+            id="username"
+            v-model="username"
+          />
 
-          <label v-if="authType != 0" for="password">Password</label>
-          <b-form-input v-if="authType != 0" id="password" v-model="password" />
+          <label
+            v-if="authType != 0"
+            for="password"
+          >Password</label>
+          <b-form-input
+            v-if="authType != 0"
+            id="password"
+            v-model="password"
+          />
           <center>
             <b-button
               id="apply_button"
@@ -67,7 +94,7 @@
 </template>
 
 <script>
-import * as axios from "axios";
+import * as axios from "axios"
 
 export default {
   name: "WlanConfigForm",
@@ -79,23 +106,23 @@ export default {
       username: "",
       password: "",
       dataReceived: false,
-    };
+    }
   },
   mounted: async function () {
     axios
       .get("wlan-config")
       .then((res) => {
-        console.log(res);
-        this.mode = res.data.mode;
-        this.authType = res.data.authType;
-        this.ssid = res.data.ssid;
-        this.username = res.data.username;
-        this.password = res.data.password;
-        this.dataReceived = true;
+        console.log(res)
+        this.mode = res.data.mode
+        this.authType = res.data.authType
+        this.ssid = res.data.ssid
+        this.username = res.data.username
+        this.password = res.data.password
+        this.dataReceived = true
       })
       .catch((error) => {
-        console.log(error);
-      });
+        console.log(error)
+      })
   },
   methods: {
     sendToServer() {
@@ -109,12 +136,12 @@ export default {
             password: this.password,
           })
           .catch((error) => {
-            console.log(error);
-          });
+            console.log(error)
+          })
       }
     },
   },
-};
+}
 </script>
 
 <style scoped>
