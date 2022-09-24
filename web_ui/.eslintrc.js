@@ -9,5 +9,8 @@ module.exports = {
     "plugin:vue/essential",
   ],
   parser: "vue-eslint-parser",
-  rules: {},
-};
+  rules: {
+    "semi": ["warn", "never"],
+    "no-unreachable": ["warn"],
+  },
+}
