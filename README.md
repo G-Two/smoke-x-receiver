@@ -76,16 +76,10 @@ $ source ./esp-idf/export.sh
   - The most common necessary change is CONFIG_ESPTOOLPY_PORT to match the serial device name assigned by your computer when the ESP32 is plugged in
   - Other changes may include XTAL frequency, CPU frequency, and SPI pin assignments (defaults will work for the Heltec WiFi LoRa 32 v2)
   - See [ESP-IDF Project Configuration documentation](https://docs.espressif.com/projects/esp-idf/en/v4.4.2/esp32/api-reference/kconfig.html) for additional information
-- Once `sdkconfig.defaults` meets your needs, generate `sdkconfig` by running:
-
-```
-$ make defconfig
-```
-
 - OPTIONAL: Additional ESP32 configuration changes can also be made by manually editing `sdkconfig` or running:
 
 ```
-$ make menuconfig
+$ idf.py menuconfig
 ```
 
 ### Build and Flash
@@ -93,13 +87,13 @@ $ make menuconfig
 - Connect ESP32 to your computer and run:
 
 ```
-$ make flash
+$ idf.py flash
 ```
 
 The application and web assets will be built and written to the ESP32 flash. After flashing is complete, it may be helpful to monitor the ESP32 logs during initial application setup to aid in debugging. While the ESP32 is still plugged into your computer, monitor logs by running:
 
 ```
-$ make monitor
+$ idf.py monitor
 ```
 
 ---
