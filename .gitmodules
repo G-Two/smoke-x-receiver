@@ -1,3 +1,3 @@
-[submodule "esp32-lora-library"]
-	path = esp32-lora-library
-	url = https://github.com/Inteform/esp32-lora-library.git
+[submodule "esp-idf-sx127x"]
+	path = esp-idf-sx127x
+	url = https://github.com/nopnop2002/esp-idf-sx127x.git

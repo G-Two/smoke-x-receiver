@@ -21,7 +21,7 @@ help:
 	@echo ""
 
 sdk:
-	git clone -b v4.4.2 --recursive https://github.com/espressif/esp-idf.git esp-idf
+	git clone -b v4.4.3 --recursive https://github.com/espressif/esp-idf.git esp-idf
 	$(IDF_PATH)/install.sh
 	@echo "=============================================================================================="
 	@echo "ESP SDK installed at $(IDF_PATH). Use the following to activate the SDK:"
@@ -42,12 +42,7 @@ SPIFFS_IMAGE_FLASH_IN_PROJECT := 1
 $(eval $(call spiffs_create_partition_image,storage,web_ui/dist))
 
 www:
-	npm install --prefix web_ui
-	npm run --prefix web_ui build
-	find web_ui/dist -type f -name '*.js' -delete
-	find web_ui/dist -type f -name '*.css' -delete
-	find web_ui/dist -type f -name '*.ico' -delete
-	find web_ui/dist -type f -name '*.html' -delete
+	./build_www.sh
 
 mock-www:
 	npm install --prefix web_ui

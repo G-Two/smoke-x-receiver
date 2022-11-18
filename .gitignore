@@ -1,5 +1,6 @@
 **/*
 
+!esp-idf-sx127x
 !clang-format
 !pre-commit-config.yaml
 !CMakeLists.txt
