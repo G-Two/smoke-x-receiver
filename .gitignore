@@ -1,7 +1,7 @@
 **/*
 
-!esp-idf-sx127x
 !clang-format
+!mock_www.sh
 !pre-commit-config.yaml
 !CMakeLists.txt
 !LICENSE

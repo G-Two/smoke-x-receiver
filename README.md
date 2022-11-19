@@ -48,7 +48,7 @@ An ESP32 with attached Semtech SX1276 LoRa transceiver is required. A combined E
 
 ### Software
 
-- ESP-IDF SDK v4.x (you may optionally install this SDK to the project directory with the `make sdk` target)
+- ESP-IDF SDK v4.4 [installation instructions](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/)
 - Node.js and npm (to build the web UI assets)
 
 ---
@@ -57,17 +57,12 @@ An ESP32 with attached Semtech SX1276 LoRa transceiver is required. A combined E
 
 ### Prepare Environment
 
+- Activate ESP-IDF
 - Clone this repo (with `--recurse-submodules`) and enter the directory.
-- If you don't already have the ESP-IDF SDK, the `make sdk` target will download it for you:
 
 ```
-$ make sdk
-```
-
-- Activate ESP-IDF (either your preexisting one or the one downloaded from the previous step):
-
-```
-$ source ./esp-idf/export.sh
+$ git clone --recurse-submodules git@github.com:G-Two/smoke-x-receiver.git
+$ cd smoke-x-receiver
 ```
 
 ### Configure
@@ -75,7 +70,7 @@ $ source ./esp-idf/export.sh
 - Edit `sdkconfig.defaults` to match your hardware by either modifying or adding additional entries.
   - The most common necessary change is CONFIG_ESPTOOLPY_PORT to match the serial device name assigned by your computer when the ESP32 is plugged in
   - Other changes may include XTAL frequency, CPU frequency, and SPI pin assignments (defaults will work for the Heltec WiFi LoRa 32 v2)
-  - See [ESP-IDF Project Configuration documentation](https://docs.espressif.com/projects/esp-idf/en/v4.4.2/esp32/api-reference/kconfig.html) for additional information
+  - See [ESP-IDF Project Configuration documentation](https://docs.espressif.com/projects/esp-idf/en/v4.4.3/esp32/api-reference/kconfig.html) for additional information
 - OPTIONAL: Additional ESP32 configuration changes can also be made by manually editing `sdkconfig` or running:
 
 ```
@@ -90,11 +85,7 @@ $ idf.py menuconfig
 $ idf.py flash
 ```
 
-The application and web assets will be built and written to the ESP32 flash. After flashing is complete, it may be helpful to monitor the ESP32 logs during initial application setup to aid in debugging. While the ESP32 is still plugged into your computer, monitor logs by running:
-
-```
-$ idf.py monitor
-```
+The application and web assets will be built and written to the ESP32 flash.
 
 ---
 
@@ -230,14 +221,22 @@ There is a LoRa configuration page in the web UI. Configuration of the LoRa mode
 
 PRs to fix bugs or enhance/add functionality are welcome! If you have successfully built the application, you have everything needed to modify it.
 
+### Debugging
+
+it may be helpful to monitor the ESP32 logs during initial application setup to aid in debugging. While the ESP32 is still plugged into your computer, monitor logs by running:
+
+```
+$ idf.py monitor
+```
+
 ### Main Application
 
-This application is built with the ESP-IDF v4 SDK and has one external dependency, [esp32-lora-library](https://github.com/Inteform/esp32-lora-library/tree/a06fc122096db8d68362701aa8c8d79a26ae2a74).
+This application is built with the ESP-IDF v4 SDK and has one external dependency, [esp-idf-sx127x](https://github.com/nopnop2002/esp-idf-sx127x/tree/c4ea8d8d2ffc49de387e6f8fded90b79b36a54a4).
 
 ### Web UI
 
 The web interface is written in Vue and is loaded onto the ESP32 flash file system as compressed static web assets which are served by the ESP32 web server. To aid in development and manual testing, the web interface can be previewed with:
 
 ```
-$ make mock-www
+$ ./mock_www.sh
 ```
