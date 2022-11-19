@@ -40,11 +40,10 @@ Note that this dataflow does not involve the internet or any cloud services. All
 
 ### Hardware
 
-An ESP32 with attached Semtech SX1276 LoRa transceiver is required. A combined ESP32+LoRa development board such as the [Heltec WiFi LoRa 32 (V2)](https://heltec.org/project/wifi-lora-32/) is ideal, but any ESP32 board with a SPI connected SX1276 will work.
+An ESP32 with attached Semtech LoRa transceiver operating in the 915 MHz ISM band is required. A combined ESP32+LoRa development board such as the [Heltec WiFi LoRa 32 (V2)](https://heltec.org/project/wifi-lora-32/) is ideal, but any ESP32 board with a SPI connected SX1276 will work.
 
-- The Smoke X operates in the 915 MHz ISM band
-- The default SPI pin connections are: CS: 18, RST: 14, MOSI: 27, MISO: 19, SCK: 5
-- If your hardware is wired differently, update the pin assignments by editing `sdkconfig.defaults` prior to building
+- SX127x LoRa modems are known to work
+- SX126x LoRa modems have not been tested (but might work?)
 
 ### Software
 
@@ -58,32 +57,47 @@ An ESP32 with attached Semtech SX1276 LoRa transceiver is required. A combined E
 ### Prepare Environment
 
 - Activate ESP-IDF
+  ```
+  $ source /path/to/esp-idf/export.sh
+  ```
 - Clone this repo (with `--recurse-submodules`) and enter the directory.
-
-```
-$ git clone --recurse-submodules git@github.com:G-Two/smoke-x-receiver.git
-$ cd smoke-x-receiver
-```
+  ```
+  $ git clone --recurse-submodules git@github.com:G-Two/smoke-x-receiver.git
+  $ cd smoke-x-receiver
+  ```
 
 ### Configure
 
-- Edit `sdkconfig.defaults` to match your hardware by either modifying or adding additional entries.
-  - The most common necessary change is CONFIG_ESPTOOLPY_PORT to match the serial device name assigned by your computer when the ESP32 is plugged in
-  - Other changes may include XTAL frequency, CPU frequency, and SPI pin assignments (defaults will work for the Heltec WiFi LoRa 32 v2)
-  - See [ESP-IDF Project Configuration documentation](https://docs.espressif.com/projects/esp-idf/en/v4.4.3/esp32/api-reference/kconfig.html) for additional information
-- OPTIONAL: Additional ESP32 configuration changes can also be made by manually editing `sdkconfig` or running:
+- The default configuration was written for the Heltec WiFi LoRa 32 _v2_ using the SX1276
 
-```
-$ idf.py menuconfig
-```
+  - The default SPI pin connections are:
+    - CS: 18
+    - RST: 14
+    - MOSI: 27
+    - MISO: 19
+    - SCK: 5
+
+- Configure your build with menuconfig:
+
+  ```
+  $ idf.py menuconfig
+  ```
+
+  - **NOTE:** If you have an SX126x (such as the Heltec WiFi LoRa 32 _v3_), you must select the SX126x driver in the "Smoke X Configuration" menu:
+    ![menuconfig](https://user-images.githubusercontent.com/7310260/202870456-c77ea92e-21c6-4403-8f7c-697acb0f3159.jpg)
+    ![modem_select](https://user-images.githubusercontent.com/7310260/202870464-c396a028-b719-4ae5-9c92-30b7ed4bffae.jpg)
+  - Configure the LoRa pin assignments:
+    - SX126x users should use the "SX126X Configuration" menu
+    - SX127x users should use the "LoRa Configuration" menu
+  - Additional configuration changes may be needed to support your specific hardware (e.g. XTAL frequency, CPU frequency, etc.)
+    - See [ESP-IDF Project Configuration documentation](https://docs.espressif.com/projects/esp-idf/en/v4.4.3/esp32/api-reference/kconfig.html) for additional configuration options
 
 ### Build and Flash
 
 - Connect ESP32 to your computer and run:
-
-```
-$ idf.py flash
-```
+  ```
+  $ idf.py flash
+  ```
 
 The application and web assets will be built and written to the ESP32 flash.
 
@@ -91,13 +105,13 @@ The application and web assets will be built and written to the ESP32 flash.
 
 ## Initial Application Setup
 
-After the ESP32 is flashed with the application, several items need to be configured and saved to NVRAM:
+After the ESP32 is flashed with the application, several items need to be configured and saved to NVRAM. These items will persist after application software updates.
 
-- WLAN Network
-- Smoke X Pairing
-- MQTT Setup
+- WLAN network configuration
+- Smoke X pairing
+- MQTT configuration
 
-### WLAN Network
+### WLAN Network Configuration
 
 The device will default to AP mode if WLAN information has not been configured, or if the connection fails. The default AP mode information is:
 
@@ -111,7 +125,7 @@ You will be presented with a self-explanatory web UI to configure the device to 
 
 The web UI will indicate that the device requires pairing to a Smoke X base unit. If the device is in an unpaired state, it will alternate monitoring the two sync channels (920 MHz for X2, 915 MHz for X4), and will pair with the first Smoke X sync transmission it receives. To pair, place the Smoke X base unit in sync mode which will cause it to send sync bursts every three seconds. Once the ESP32 receives and parses the burst, it will transmit a sync response on the target frequency, and the base unit will return to normal operation. At this point you can confirm in the web UI that the device is paired with a specific device ID and frequency. This is the only time the ESP32 will transmit a LoRa signal. The device may always be unpaired via the web UI.
 
-### MQTT Setup
+### MQTT Configuration
 
 The web UI is also used to configure the device to connect to an MQTT broker. The MQTT URI is the only mandatory field, the rest are optional and will depend on your specific MQTT broker configuration. MQTTS server authentication is supported by entering a trusted CA PEM via the web UI. PKI client auth is not currently supported.
 
@@ -231,7 +245,10 @@ $ idf.py monitor
 
 ### Main Application
 
-This application is built with the ESP-IDF v4 SDK and has one external dependency, [esp-idf-sx127x](https://github.com/nopnop2002/esp-idf-sx127x/tree/c4ea8d8d2ffc49de387e6f8fded90b79b36a54a4).
+This application is built with the ESP-IDF v4 SDK and has external dependencies for the LoRa modem drivers:
+
+- [esp-idf-sx126x](https://github.com/nopnop2002/esp-idf-sx126x/tree/14ba7cfaa217894a8eac2a4e8d3a8952cf5111de)
+- [esp-idf-sx127x](https://github.com/nopnop2002/esp-idf-sx127x/tree/c4ea8d8d2ffc49de387e6f8fded90b79b36a54a4).
 
 ### Web UI
 

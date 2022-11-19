@@ -3,8 +3,15 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
-#include "lora.h"
 #include "app_lora.h"
+
+#ifdef CONFIG_SX126x
+#include "ra01s.h"
+#define DEFAULT_TX_POWER_DBM 22
+#define DEFAULT_TCXO_VOLTAGE 0.0
+#else
+#include "lora.h"
+#endif
 
 static const char *TAG = "app_lora";
 static TaskHandle_t xRxTask = NULL;
@@ -91,11 +98,18 @@ static int validate_params(app_lora_params_t *in_params) {
 static void tx_msg(char *msg) {
     size_t len = strlen(msg);
     xSemaphoreTake(xRadioSemaphore, (TickType_t)10);
+
+#ifdef CONFIG_SX126x
+    if (LoRaSend((uint8_t *)msg, len, SX126x_TXMODE_BACK2RX)) {
+        ESP_LOGE(TAG, "Send fail");
+    }
+#else
     lora_send_packet((uint8_t *)msg, len);
     ESP_LOGI(TAG, "%d bytes transmitted (%s)", len, msg);
     if (xRxTask) {
         lora_receive();
     }
+#endif
     xSemaphoreGive(xRadioSemaphore);
 }
 
@@ -117,18 +131,29 @@ static void tx_task(void *pvParameter) {
 
 static void rx_task(void *pvParameter) {
     int msg_len;
-    int rssi;
-    float snr;
     uint8_t buf[255];
     void (*cb)(const char *, const int) = pvParameter;
     ESP_LOGI(TAG, "Starting LoRa Rx");
     while (1) {
         xSemaphoreTake(xRadioSemaphore, (TickType_t)10);
+
+#ifdef CONFIG_SX126x
+        msg_len = LoRaReceive(buf, sizeof(buf));
+        if (msg_len > 0) {
+            int8_t rssi, snr;
+            buf[msg_len] = 0;
+            GetPacketStatus(&rssi, &snr);
+            ESP_LOGI(TAG, "Packet received - Size: %d RSSI: %d, SNR: %d",
+                     msg_len, rssi, snr);
+            ESP_LOGI(TAG, "%s", buf);
+            cb((char *)buf, msg_len);
+        }
+#else
         lora_receive();
         while (lora_received()) {
             msg_len = lora_receive_packet(buf, sizeof(buf));
-            rssi = lora_packet_rssi();
-            snr = lora_packet_snr();
+            int rssi = lora_packet_rssi();
+            float snr = lora_packet_snr();
             buf[msg_len] = 0;
             ESP_LOGI(TAG, "Packet received - Size: %d RSSI: %d, SNR: %f",
                      msg_len, rssi, snr);
@@ -136,6 +161,7 @@ static void rx_task(void *pvParameter) {
             cb((char *)buf, msg_len);
             lora_receive();
         }
+#endif
         xSemaphoreGive(xRadioSemaphore);
         vTaskDelay(1);
     }
@@ -194,6 +220,11 @@ int app_lora_get_params(app_lora_params_t *out_params) {
 int app_lora_set_params(app_lora_params_t *in_params,
                         xTaskHandle calling_task) {
     if (validate_params(in_params) == ESP_OK) {
+#ifdef CONFIG_SX126x
+        LoRaConfig(radio_params.spreading_factor, radio_params.bandwidth,
+                   radio_params.coding_rate, radio_params.preamble_len, 0,
+                   radio_params.crc_on, false);
+#else
         ESP_LOGD(TAG, "Setting radio parameters");
         xSemaphoreTake(xRadioSemaphore, (TickType_t)10);
         lora_idle();
@@ -221,6 +252,7 @@ int app_lora_set_params(app_lora_params_t *in_params,
         else {
             lora_disable_crc();
         }
+#endif
         xSemaphoreGive(xRadioSemaphore);
 
         if (calling_task) {
@@ -240,7 +272,16 @@ int app_lora_set_params(app_lora_params_t *in_params,
 }
 
 int app_lora_init() {
-    if (lora_init()) {
+    int error;
+#ifdef CONFIG_SX126x
+    LoRaDebugPrint(true);
+    LoRaInit();
+    error = LoRaBegin(radio_params.frequency, DEFAULT_TX_POWER_DBM,
+                      DEFAULT_TCXO_VOLTAGE, false);
+#else
+    error = lora_init() ? 0 : 1;
+#endif
+    if (!error) {
         xRadioSemaphore = xSemaphoreCreateBinary();
         app_lora_set_params(&radio_params, NULL);
         ESP_LOGI(TAG, "LoRa module initialized");

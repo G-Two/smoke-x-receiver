@@ -1,3 +1,6 @@
 [submodule "esp-idf-sx127x"]
 	path = esp-idf-sx127x
 	url = https://github.com/nopnop2002/esp-idf-sx127x.git
+[submodule "esp-idf-sx126x"]
+	path = esp-idf-sx126x
+	url = git@github.com:nopnop2002/esp-idf-sx126x.git

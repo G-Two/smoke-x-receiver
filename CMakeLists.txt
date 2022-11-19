@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 
-set(EXTRA_COMPONENT_DIRS esp-idf-sx127x/components/lora)
-set(COMPONENTS json lora main mqtt esp-tls mbedtls spiffs tcp_transport esp_http_server)
+set(EXTRA_COMPONENT_DIRS esp-idf-sx127x/components/lora esp-idf-sx126x/components/ra01s)
+set(COMPONENTS json lora main mqtt esp-tls mbedtls ra01s spiffs tcp_transport esp_http_server)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(smoke-x)
 

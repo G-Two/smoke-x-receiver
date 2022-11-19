@@ -1,4 +1,4 @@
-menu "Application Configuration"
+menu "Smoke X Configuration"
 
     config DEFAULT_WIFI_AP_SSID
         string "Default WiFi SSID for AP-mode"
@@ -8,9 +8,20 @@ menu "Application Configuration"
         string "Default WPA2 Password for AP-mode"
         default "the extra b is for byob"
 
+    choice LORA_MODEM
+        bool "LoRa Modem"
+        default SX127x
+
+    config SX126x
+        bool "SX126x"
+
+    config SX127x
+        bool "SX127x"
+
+    endchoice
+
     config WEB_MOUNT_POINT
-        string "Website mount point in VFS"
+        string
         default "/www"
-        help
-            Specify the mount point in VFS.
+
 endmenu
