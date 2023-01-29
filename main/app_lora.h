@@ -6,27 +6,40 @@
 
 #define FREQ_MIN 137000000
 #define FREQ_MAX 1020000000
-#define BW_MIN 7800
-#define BW_MAX 500000
-#define SF_MIN 6
-#define SF_MAX 12
+
 #define PREAMBLE_MIN 6
 #define PREAMBLE_MAX 65535
 #define SYNC_WORD_MIN 0
 #define SYNC_WORD_MAX 255
-#define TX_POWER_MIN 2
-#define TX_POWER_MAX 17
-#define CR_MIN 5
-#define CR_MAX 8
 #define PAYLOAD_LEN_MAX 255
 #define DEFAULT_FREQ 910500000
-#define DEFAULT_BW 125000
-#define DEFAULT_SF 9
 #define DEFAULT_PREAMBLE_LEN 10
 #define DEFAULT_SYNC_WORD 0x12
+#define DEFAULT_MSG_LEN 30
+#define SF_MIN 5
+#define SF_MAX 12
+#define DEFAULT_SF 9
+#ifdef CONFIG_SX126x
+#define DEFAULT_TX_POWER 22
+#define DEFAULT_CR 1
+#define DEFAULT_BW 4
+#define TX_POWER_MIN 2
+#define TX_POWER_MAX 22
+#define BW_MIN 0
+#define BW_MAX 10
+#define CR_MIN 1
+#define CR_MAX 4
+#else
 #define DEFAULT_TX_POWER 12
 #define DEFAULT_CR 5
-#define DEFAULT_MSG_LEN 30
+#define DEFAULT_BW 125000
+#define TX_POWER_MIN 2
+#define TX_POWER_MAX 17
+#define BW_MIN 7800
+#define BW_MAX 500000
+#define CR_MIN 5
+#define CR_MAX 8
+#endif
 
 typedef struct {
     uint8_t tx_power;

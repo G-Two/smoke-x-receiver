@@ -1,4 +1,4 @@
-menu "Smoke X Configuration"
+menu "*** Smoke X Receiver HW/App Config ***"
 
     config DEFAULT_WIFI_AP_SSID
         string "Default WiFi SSID for AP-mode"
@@ -6,22 +6,171 @@ menu "Smoke X Configuration"
 
     config DEFAULT_WIFI_AP_PASSWORD
         string "Default WPA2 Password for AP-mode"
-        default "the extra b is for byob"
-
-    choice LORA_MODEM
-        bool "LoRa Modem"
-        default SX127x
-
-    config SX126x
-        bool "SX126x"
-
-    config SX127x
-        bool "SX127x"
-
-    endchoice
+        default "The extra B is for BYOBB"
 
     config WEB_MOUNT_POINT
         string
         default "/www"
+
+    choice LORA_MODEM
+        bool "LoRa Modem"
+        default SX126x
+
+    config SX126x
+        bool "SX126x (found in Heltec LoRa32 v3)"
+
+    config SX127x
+        bool "SX127x (found in Heltec LoRa32 v2)"
+
+    endchoice
+
+    # https://github.com/nopnop2002/esp-idf-sx126x
+    menu "SX126x Configuration"
+    depends on SX126x
+        config GPIO_RANGE_MAX
+            int
+            default 33 if IDF_TARGET_ESP32
+            default 46 if IDF_TARGET_ESP32S2
+            default 48 if IDF_TARGET_ESP32S3
+            default 18 if IDF_TARGET_ESP32C2
+            default 19 if IDF_TARGET_ESP32C3
+
+        config NSS_GPIO
+            int "SX126X NSS GPIO"
+            range 0 GPIO_RANGE_MAX
+            default 8 if SX126x
+            help
+                Pin Number to be used as the NSS SPI signal.
+
+        config RST_GPIO
+            int "SX126X RST GPIO"
+            range 0 GPIO_RANGE_MAX
+            default 12 if SX126x
+            help
+                Pin Number to be used as the RST signal.
+
+        config MISO_GPIO
+            int "SX126X MISO GPIO"
+            range 0 GPIO_RANGE_MAX
+            default 11 if SX126x
+            help
+                Pin Number to be used as the MISO SPI signal.
+
+        config MOSI_GPIO
+            int "SX126X MOSI GPIO"
+            range 0 GPIO_RANGE_MAX
+            default 10 if SX126x
+            help
+                Pin Number to be used as the MOSI SPI signal.
+
+        config SCLK_GPIO
+            int "SX126X SCLK GPIO"
+            range 0 GPIO_RANGE_MAX
+            default 9 if SX126x
+            help
+                Pin Number to be used as the SCLK SPI signal.
+
+        config BUSY_GPIO
+            int "SX126X BUSY GPIO"
+            range 0 GPIO_RANGE_MAX
+            default 13 if SX126x
+            help
+                Pin Number to be used as the BUSY signal.
+
+        config TXEN_GPIO
+            int "SX126X TXEN GPIO"
+            range -1 GPIO_RANGE_MAX
+            default -1 if SX126x
+            help
+                Pin Number to be used as the TXEN signal.
+
+        config RXEN_GPIO
+            int "SX126X RXEN GPIO"
+            range -1 GPIO_RANGE_MAX
+            default -1 if SX126x
+            help
+                Pin Number to be used as the RXEN signal.
+
+        choice SPI_HOST
+            prompt "SPI peripheral that controls this bus"
+            default SPI2_HOST
+            help
+                Select SPI peripheral that controls this bus.
+            config SPI2_HOST
+                bool "SPI2_HOST"
+                help
+                    Use SPI2_HOST. This is also called HSPI_HOST.
+            config SPI3_HOST
+                depends on IDF_TARGET_ESP32 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+                bool "SPI3_HOST"
+                help
+                    USE SPI3_HOST. This is also called VSPI_HOST
+        endchoice
+
+    endmenu
+
+    # https://github.com/nopnop2002/esp-idf-sx127x
+    menu "SX127x Configuration"
+    depends on SX127x
+        config GPIO_RANGE_MAX
+            int
+            default 33 if IDF_TARGET_ESP32
+            default 46 if IDF_TARGET_ESP32S2
+            default 48 if IDF_TARGET_ESP32S3
+            default 18 if IDF_TARGET_ESP32C2
+            default 19 if IDF_TARGET_ESP32C3
+
+        config CS_GPIO
+                int "NSS GPIO"
+                range 0 GPIO_RANGE_MAX
+                default 18 if SX127x
+                help
+                    Pin Number where the NCS pin of the LoRa module is connected to.
+
+        config RST_GPIO
+            int "RST GPIO"
+            range 0 GPIO_RANGE_MAX
+            default 14 if SX127x
+            help
+                Pin Number where the NRST pin of the LoRa module is connected to.
+
+        config MISO_GPIO
+            int "MISO GPIO"
+            range 0 GPIO_RANGE_MAX
+            default 19 if SX127x
+            help
+                Pin Number to be used as the MISO SPI signal.
+
+        config MOSI_GPIO
+            int "MOSI GPIO"
+            range 0 GPIO_RANGE_MAX
+            default 27 if SX127x
+            help
+                Pin Number to be used as the MOSI SPI signal.
+
+        config SCK_GPIO
+            int "SCK GPIO"
+            range 0 GPIO_RANGE_MAX
+            default 5 if SX127x
+            help
+                Pin Number to be used as the SCK SPI signal.
+
+        choice SPI_HOST
+            prompt "SPI peripheral that controls this bus"
+            default SPI2_HOST
+            help
+                Select SPI peripheral that controls this bus.
+            config SPI2_HOST
+                bool "SPI2_HOST"
+                help
+                    Use SPI2_HOST. This is also called HSPI_HOST.
+            config SPI3_HOST
+                depends on IDF_TARGET_ESP32 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+                bool "SPI3_HOST"
+                help
+                    USE SPI3_HOST. This is also called VSPI_HOST
+        endchoice
+
+    endmenu
 
 endmenu

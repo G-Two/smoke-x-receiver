@@ -8,29 +8,7 @@
 #
 #################################################################
 
-# Default wireless credentials when ESP32 acts as an access point
-CONFIG_DEFAULT_WIFI_AP_SSID="Smoke X Receiver"
-CONFIG_DEFAULT_WIFI_AP_PASSWORD="The extra B is for BYOBB"
-
-# SPI CONFIGURATION
-
-## Used by both SX127x and SX126x drivers
-CONFIG_RST_GPIO=14
-CONFIG_MISO_GPIO=19
-CONFIG_MOSI_GPIO=27
-
-## Only used by SX126x driver
-CONFIG_BUSY_GPIO=18
-CONFIG_NSS_GPIO=18
-CONFIG_SCLK_GPIO=5
-
-## Only used by SX127x driver
-CONFIG_CS_GPIO=18
-CONFIG_SCK_GPIO=5
-
-# Miscellaneous
 CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
-
 
 #################################################################
 # CAUTION: Modifying these values may break the Smoke X application

@@ -2,7 +2,7 @@
 
 <img width="405" alt="screenshot" src="https://user-images.githubusercontent.com/7310260/150705723-5d0896be-6a5a-4b4c-8cb7-534bb355dd1f.png">
 
-This is an ESP32+LoRa application that pairs with a [ThermoWorks Smoke X2](https://www.thermoworks.com/smokex2/) or [Smoke X4](https://www.thermoworks.com/smokex4/) remote thermometer and serves as an RF gateway to publish temperature data to an MQTT broker. This project was designed specifically to integrate with Home Assistant, but may also be used for any other MQTT-based application. This device will work alongside any existing Smoke X receivers (i.e. all paired receivers will still work). In addition, this application may also operate in a limited standalone fashion (operating in AP mode without MQTT or Home Assistant) for field use.
+This is an ESP32+LoRa application that receives signals from a [ThermoWorks Smoke X2](https://www.thermoworks.com/smokex2/) or [Smoke X4](https://www.thermoworks.com/smokex4/) remote thermometer and publishes sensor data to an MQTT broker. This project was designed specifically to integrate with Home Assistant, but may also be used with any other MQTT-based application. This device will work alongside any existing Smoke X receivers (i.e. all paired receivers will still function). In addition, this application may also operate in a standalone fashion (operating in AP mode without MQTT or Home Assistant) for field use.
 
 _NOTE:_ This application is **not** compatible with the original [ThermoWorks Smoke](https://www.thermoworks.com/smoke/) or [ThermoWorks Signals](https://www.thermoworks.com/signals/) products.
 
@@ -22,14 +22,14 @@ _NOTE:_ This application is **not** compatible with the original [ThermoWorks Sm
 
 ## Motivation
 
-I love the Smoke X's long RF range and the fact that it doesn't need an internet connection or mobile app to function. But the receiver unit provided by TheroWorks only shows current/max/min probe readings, with no means of watching for trends. This ESP32+LoRa application allows Smoke X users to have all the benefits of the Smoke X and also visualize the temperature history as well as have the ability to send the data to a recorder via MQTT. I use a kamado style grill for smoking and am constantly refining my methods. It is helpful for me to keep data to learn from mistakes such as the example below when I lost control of my grill temperature.
+The Smoke X has a great long RF range and doesn't need an internet connection, mobile app, or a user account to function. But the device only shows current/max/min probe readings, with no means of recording or tracking trends. This ESP32+LoRa application allows Smoke X users to have all the benefits of the Smoke X and also visualize the temperature history as well as have the ability to send the data to a recorder via MQTT. I use a kamado style grill for smoking and am constantly refining my methods. It is helpful for me to keep data to learn from mistakes such as the example below when I lost control of my grill temperature.
 
 <img width="1602" alt="screenshot" src="https://user-images.githubusercontent.com/7310260/190879396-e9dd20b8-dca5-4b48-9fbd-fe4c0fc18d6c.png">
 
 My dataflow is:
 
 ```
-Smoke X2 (Sensor) --> ESP32 (LoRa Rx and Translation) --> Mosquitto (MQTT Broker) --> Home Assistant (Data Aggregation and Automation) --> InfluxDB (Data Storage) --> Grafana (Visualization)
+Smoke X2 (Sensor) --> ESP32 (LoRa Rx, parsing, and repeating via MQTT) --> Mosquitto (MQTT broker) --> Home Assistant (Data aggregation and automation) --> InfluxDB (Data storage) --> Grafana (Visualization)
 ```
 
 Note that this dataflow does not involve the internet or any cloud services. All data is acquired, processed, and stored locally!
@@ -40,10 +40,9 @@ Note that this dataflow does not involve the internet or any cloud services. All
 
 ### Hardware
 
-An ESP32 with attached Semtech LoRa transceiver operating in the 915 MHz ISM band is required. A combined ESP32+LoRa development board such as the [Heltec WiFi LoRa 32 (V2)](https://heltec.org/project/wifi-lora-32/) is ideal, but any ESP32 board with a SPI connected SX1276 will work.
+An ESP32 with attached Semtech LoRa transceiver operating in the 915 MHz ISM band is required. A combined ESP32+LoRa development board such as the Heltec WiFi LoRa 32 [V2](https://heltec.org/project/wifi-lora-32/) or [V3](https://heltec.org/project/wifi-lora-32-v3/) is ideal, but any ESP32 board with a SPI connected SX1276 or SX1262 should work.
 
-- SX127x LoRa modems are known to work
-- SX126x LoRa modems have not been tested (but might work?)
+- Both the Heltec WiFi LoRa 32 V2(SX1276) and V3(SX1262) have been tested to work with this application
 
 ### Software
 
@@ -57,45 +56,39 @@ An ESP32 with attached Semtech LoRa transceiver operating in the 915 MHz ISM ban
 ### Prepare Environment
 
 - Activate ESP-IDF
-  ```
+  ```bash
   $ source /path/to/esp-idf/export.sh
   ```
 - Clone this repo (with `--recurse-submodules`) and enter the directory.
-  ```
+  ```bash
   $ git clone --recurse-submodules git@github.com:G-Two/smoke-x-receiver.git
   $ cd smoke-x-receiver
   ```
 
 ### Configure
 
-- The default configuration was written for the Heltec WiFi LoRa 32 _v2_ using the SX1276
+- The default configuration for this project was written for the Heltec WiFi LoRa 32 _v3_ (based on the SX1262). If you are using this exact hardware, you can can probably skip this section. If you are running on any other hardware, want to customize the build, or if the default build doesn't work, you'll need to run menuconfig:
 
-  - The default SPI pin connections are:
-    - CS: 18
-    - RST: 14
-    - MOSI: 27
-    - MISO: 19
-    - SCK: 5
-
-- Configure your build with menuconfig:
-
-  ```
+  ```bash
   $ idf.py menuconfig
   ```
 
-  - **NOTE:** If you have an SX126x (such as the Heltec WiFi LoRa 32 _v3_), you must select the SX126x driver in the "Smoke X Configuration" menu:
-    ![menuconfig](https://user-images.githubusercontent.com/7310260/202870456-c77ea92e-21c6-4403-8f7c-697acb0f3159.jpg)
-    ![modem_select](https://user-images.githubusercontent.com/7310260/202870464-c396a028-b719-4ae5-9c92-30b7ed4bffae.jpg)
-  - Configure the LoRa pin assignments:
-    - SX126x users should use the "SX126X Configuration" menu
-    - SX127x users should use the "LoRa Configuration" menu
-  - Additional configuration changes may be needed to support your specific hardware (e.g. XTAL frequency, CPU frequency, etc.)
-    - See [ESP-IDF Project Configuration documentation](https://docs.espressif.com/projects/esp-idf/en/v4.4.3/esp32/api-reference/kconfig.html) for additional configuration options
+  - **NOTE:** If you are using an SX1276 (such as the Heltec WiFi LoRa 32 _v2_), you must select the SX127x driver in the "Smoke X Receiver HW/App Config" menu and configure the SX127x SPI pin assignments
+
+    - The Heltec WiFi LoRa 32 v2 SPI assignments are:
+      - CS/NSS: 18
+      - RST: 14
+      - MISO: 19
+      - MOSI: 27
+      - SCK: 5
+
+  - Additional configuration changes may be needed to support your specific hardware or other needs
 
 ### Build and Flash
 
-- Connect ESP32 to your computer and run:
-  ```
+- Connect your ESP32 to your computer and run:
+  ```bash
+  $ idf.py set-target esp32s3 # If using a Heltec WiFi LoRa 32 v3, otherwise set target as appropriate to your hardware
   $ idf.py flash
   ```
 
@@ -105,7 +98,7 @@ The application and web assets will be built and written to the ESP32 flash.
 
 ## Initial Application Setup
 
-After the ESP32 is flashed with the application, several items need to be configured and saved to NVRAM. These items will persist after application software updates.
+After the ESP32 is flashed, several items need to be configured and saved to NVRAM. The configuration of these items will persist after ESP32 reset as well as application software updates.
 
 - WLAN network configuration
 - Smoke X pairing
@@ -113,17 +106,17 @@ After the ESP32 is flashed with the application, several items need to be config
 
 ### WLAN Network Configuration
 
-The device will default to AP mode if WLAN information has not been configured, or if the connection fails. The default AP mode information is:
+The device will default to AP mode if WLAN information has not been configured, or if the connection fails. The default AP mode information (configurable in menuconfig) is:
 
 - SSID: "Smoke X Receiver"
 - PSK: "The extra B is for BYOBB"
 
-Connect to the ESP32 by using a web browser to navigate to http://192.168.4.1/wlan
-You will be presented with a self-explanatory web UI to configure the device to your home network. Once you apply the new information, the device will reset and attempt to join your home network. The ESP32 will supply a DHCP client hostname request for `smoke_x`. Once you find the ESP32 on your home network, you may proceed with the remainder of the setup process.
+Connect to the ESP32's AP and use a web browser to navigate to http://192.168.4.1/wlan
+You will be presented with a self-explanatory web UI to configure the device to your home network. WPA2-PSK and WPA2-Enterprise (EAP-TTLS) are supported. Once you apply your network authentication information, the device will reset and attempt to join your home network. The ESP32 will supply a DHCP client hostname request for `smoke_x`. Once you find the ESP32 on your home network, you may proceed with the remainder of the setup process. If the ESP32 fails to join your network, it will revert to default AP mode.
 
 ### Smoke X Pairing
 
-The web UI will indicate that the device requires pairing to a Smoke X base unit. If the device is in an unpaired state, it will alternate monitoring the two sync channels (920 MHz for X2, 915 MHz for X4), and will pair with the first Smoke X sync transmission it receives. To pair, place the Smoke X base unit in sync mode which will cause it to send sync bursts every three seconds. Once the ESP32 receives and parses the burst, it will transmit a sync response on the target frequency, and the base unit will return to normal operation. At this point you can confirm in the web UI that the device is paired with a specific device ID and frequency. This is the only time the ESP32 will transmit a LoRa signal. The device may always be unpaired via the web UI.
+The "Pairing" tab of the web UI will indicate that the device requires pairing to a Smoke X base unit. If the device is in an unpaired state, it will alternate monitoring the two sync channels (920 MHz for X2, 915 MHz for X4), and will pair with the first Smoke X sync transmission it receives. To pair, place the Smoke X base unit in sync mode which will cause it to send sync bursts every three seconds. Once the ESP32 receives and parses the burst, it will transmit a sync response on the target frequency, and the base unit will return to normal operation. At this point you can confirm in the web UI that the device is paired with a specific device ID and frequency. This is the only time the ESP32 will transmit a LoRa signal. The device may always be unpaired via the web UI. Pairing/unpairing of the ESP32 will not affect the pairing status of any other devices.
 
 ### MQTT Configuration
 
@@ -237,7 +230,7 @@ PRs to fix bugs or enhance/add functionality are welcome! If you have successful
 
 ### Debugging
 
-it may be helpful to monitor the ESP32 logs during initial application setup to aid in debugging. While the ESP32 is still plugged into your computer, monitor logs by running:
+It may be helpful to monitor the ESP32 logs during initial application setup to aid in debugging. While the ESP32 is still plugged into your computer, monitor logs by running:
 
 ```
 $ idf.py monitor
@@ -245,10 +238,10 @@ $ idf.py monitor
 
 ### Main Application
 
-This application is built with the ESP-IDF v4 SDK and has external dependencies for the LoRa modem drivers:
+This application is built with the ESP-IDF v4 SDK and has external dependencies with the following LoRa modem drivers (submodules to this repo):
 
-- [esp-idf-sx126x](https://github.com/nopnop2002/esp-idf-sx126x/tree/14ba7cfaa217894a8eac2a4e8d3a8952cf5111de)
-- [esp-idf-sx127x](https://github.com/nopnop2002/esp-idf-sx127x/tree/c4ea8d8d2ffc49de387e6f8fded90b79b36a54a4).
+- [esp-idf-sx126x](https://github.com/nopnop2002/esp-idf-sx126x) (MIT License)
+- [esp-idf-sx127x](https://github.com/nopnop2002/esp-idf-sx127x) (MIT License)
 
 ### Web UI
 
@@ -257,3 +250,8 @@ The web interface is written in Vue and is loaded onto the ESP32 flash file syst
 ```
 $ ./mock_www.sh
 ```
+
+### TODO
+
+- Do something useful with the OLED display on Heltec LoRa 32 devices
+- Refine web UI

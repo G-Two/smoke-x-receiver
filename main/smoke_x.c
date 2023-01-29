@@ -103,8 +103,8 @@ static void handle_sync_msg(const char *msg, const int len) {
             .sending_task = xTaskGetCurrentTaskHandle(),
         };
         set_frequency(config.frequency);
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        ESP_LOGI(TAG, "Sending sync acknowledgement to transmitter");
+        ESP_LOGI(TAG, "Sending sync acknowledgement to transmitter: %s",
+                 tx_msg.msg);
         app_lora_start_tx(&tx_msg);
     } else {
         ESP_LOGE(TAG, "Frequency out of range %d", config.frequency);
@@ -177,11 +177,13 @@ static esp_err_t read_config_from_nvram() {
         ESP_LOGD(TAG, "nvs_get_blob err: %d", err);
         nvs_close(h_nvs);
         if (ESP_OK == err) {
-            if (config.frequency >= SMOKE_X_RF_MIN &&
-                config.frequency <= SMOKE_X_RF_MAX) {
+            if ((config.frequency >= SMOKE_X_RF_MIN &&
+                 config.frequency <= SMOKE_X_RF_MAX) &&
+                strlen(config.device_id) > 0) {
                 ESP_LOGI(TAG, "Device is paired to %s at %d MHz",
                          config.device_id, config.frequency);
                 configured = true;
+                sync_received = true;
                 return ESP_OK;
             }
         }
@@ -189,6 +191,7 @@ static esp_err_t read_config_from_nvram() {
         ESP_LOGI(TAG, "Device is not paired, waiting for sync on %d",
                  config.frequency);
         configured = false;
+        sync_received = false;
         return ESP_OK;
     }
     return ESP_FAIL;
@@ -209,36 +212,42 @@ static void handle_rx(const char *msg, const int len) {
             }
             break;
         case NUM_COMMAS_X2_STATE_MSG:
-            if (!configured) {
-                config.num_probes = 2;
-                configured = true;
-                save_config_to_nvram();
-                esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_SYNC_SUCCESS, NULL,
-                               0, 1000);
-                ESP_LOGI(TAG,
-                         "Received data transmission from %s, saving config",
-                         config.device_id);
+            if (sync_received) {
+                if (!configured) {
+                    config.num_probes = 2;
+                    configured = true;
+                    save_config_to_nvram();
+                    esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_SYNC_SUCCESS,
+                                   NULL, 0, 1000);
+                    ESP_LOGI(
+                        TAG,
+                        "Received data transmission from %s, saving config",
+                        config.device_id);
+                }
+                parse_state_msg(msg, &state);
+                ESP_LOGI(TAG, "X2 DATA: %s", msg);
+                esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_STATE_MSG_RECEIVED,
+                               NULL, 0, 1000);
             }
-            parse_state_msg(msg, &state);
-            ESP_LOGI(TAG, "X2 DATA: %s", msg);
-            esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_STATE_MSG_RECEIVED,
-                           NULL, 0, 1000);
             break;
         case NUM_COMMAS_X4_STATE_MSG:
-            if (!configured) {
-                config.num_probes = 4;
-                configured = true;
-                save_config_to_nvram();
-                esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_SYNC_SUCCESS, NULL,
-                               0, 1000);
-                ESP_LOGI(TAG,
-                         "Received data transmission from %s, saving config",
-                         config.device_id);
+            if (sync_received) {
+                if (!configured) {
+                    config.num_probes = 4;
+                    configured = true;
+                    save_config_to_nvram();
+                    esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_SYNC_SUCCESS,
+                                   NULL, 0, 1000);
+                    ESP_LOGI(
+                        TAG,
+                        "Received data transmission from %s, saving config",
+                        config.device_id);
+                }
+                parse_state_msg(msg, &state);
+                ESP_LOGI(TAG, "X4 DATA: %s", msg);
+                esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_STATE_MSG_RECEIVED,
+                               NULL, 0, 1000);
             }
-            parse_state_msg(msg, &state);
-            ESP_LOGI(TAG, "X4 DATA: %s", msg);
-            esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_STATE_MSG_RECEIVED,
-                           NULL, 0, 1000);
             break;
         default:
             ESP_LOGE(TAG, "Received unrecognized message type: %s", msg);
@@ -262,7 +271,7 @@ static void sync_task(void *pvParameter) {
 
 esp_err_t start_sync() {
     if (!xSyncTask) {
-        xTaskCreate(&sync_task, "smoke_x_sync_task", 2048, NULL, 5, &xSyncTask);
+        xTaskCreate(&sync_task, "smoke_x_sync_task", 3072, NULL, 5, &xSyncTask);
         return ESP_OK;
     }
     ESP_LOGI(TAG, "smoke_x_sync_task already started");
@@ -302,6 +311,7 @@ esp_err_t smoke_x_sync() {
     config.frequency = 0;
     save_config_to_nvram();
     configured = false;
+    sync_received = false;
     esp_err_t err = start_sync();
     return err;
 }

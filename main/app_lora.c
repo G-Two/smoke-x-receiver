@@ -7,8 +7,8 @@
 
 #ifdef CONFIG_SX126x
 #include "ra01s.h"
-#define DEFAULT_TX_POWER_DBM 22
-#define DEFAULT_TCXO_VOLTAGE 0.0
+#define DEFAULT_TCXO_VOLTAGE 3.3
+#define DEFAULT_USE_REGULATOR_LDO 1
 #else
 #include "lora.h"
 #endif
@@ -97,20 +97,20 @@ static int validate_params(app_lora_params_t *in_params) {
 
 static void tx_msg(char *msg) {
     size_t len = strlen(msg);
-    xSemaphoreTake(xRadioSemaphore, (TickType_t)10);
-
+    if (xSemaphoreTake(xRadioSemaphore, portMAX_DELAY)) {
 #ifdef CONFIG_SX126x
-    if (LoRaSend((uint8_t *)msg, len, SX126x_TXMODE_BACK2RX)) {
-        ESP_LOGE(TAG, "Send fail");
-    }
+        if (!LoRaSend((uint8_t *)msg, len, SX126x_TXMODE_SYNC)) {
+            ESP_LOGE(TAG, "Send fail");
+        }
 #else
-    lora_send_packet((uint8_t *)msg, len);
-    ESP_LOGI(TAG, "%d bytes transmitted (%s)", len, msg);
-    if (xRxTask) {
-        lora_receive();
-    }
+        lora_send_packet((uint8_t *)msg, len);
+        if (xRxTask) {
+            lora_receive();
+        }
 #endif
-    xSemaphoreGive(xRadioSemaphore);
+        ESP_LOGI(TAG, "%d bytes transmitted (%s)", len, msg);
+        xSemaphoreGive(xRadioSemaphore);
+    }
 }
 
 static void tx_task(void *pvParameter) {
@@ -135,34 +135,36 @@ static void rx_task(void *pvParameter) {
     void (*cb)(const char *, const int) = pvParameter;
     ESP_LOGI(TAG, "Starting LoRa Rx");
     while (1) {
-        xSemaphoreTake(xRadioSemaphore, (TickType_t)10);
-
+        msg_len = 0;
+        if (xSemaphoreTake(xRadioSemaphore, (TickType_t)10)) {
 #ifdef CONFIG_SX126x
-        msg_len = LoRaReceive(buf, sizeof(buf));
-        if (msg_len > 0) {
-            int8_t rssi, snr;
-            buf[msg_len] = 0;
-            GetPacketStatus(&rssi, &snr);
-            ESP_LOGI(TAG, "Packet received - Size: %d RSSI: %d, SNR: %d",
-                     msg_len, rssi, snr);
-            ESP_LOGI(TAG, "%s", buf);
-            cb((char *)buf, msg_len);
-        }
+            msg_len = LoRaReceive(buf, sizeof(buf));
+            if (msg_len > 0) {
+                int8_t rssi, snr;
+                buf[msg_len] = 0;
+                GetPacketStatus(&rssi, &snr);
+                ESP_LOGI(TAG, "Packet received - Size: %d RSSI: %d, SNR: %d",
+                         msg_len, rssi, snr);
+                ESP_LOGI(TAG, "%s", buf);
+            }
 #else
-        lora_receive();
-        while (lora_received()) {
-            msg_len = lora_receive_packet(buf, sizeof(buf));
-            int rssi = lora_packet_rssi();
-            float snr = lora_packet_snr();
-            buf[msg_len] = 0;
-            ESP_LOGI(TAG, "Packet received - Size: %d RSSI: %d, SNR: %f",
-                     msg_len, rssi, snr);
-            ESP_LOGI(TAG, "%s", buf);
-            cb((char *)buf, msg_len);
             lora_receive();
-        }
+            while (lora_received()) {
+                msg_len = lora_receive_packet(buf, sizeof(buf));
+                int rssi = lora_packet_rssi();
+                float snr = lora_packet_snr();
+                buf[msg_len] = 0;
+                ESP_LOGI(TAG, "Packet received - Size: %d RSSI: %d, SNR: %f",
+                         msg_len, rssi, snr);
+                ESP_LOGI(TAG, "%s", buf);
+                lora_receive();
+            }
 #endif
-        xSemaphoreGive(xRadioSemaphore);
+            xSemaphoreGive(xRadioSemaphore);
+            if (msg_len > 0) {
+                cb((char *)buf, msg_len);
+            }
+        }
         vTaskDelay(1);
     }
 }
@@ -220,40 +222,44 @@ int app_lora_get_params(app_lora_params_t *out_params) {
 int app_lora_set_params(app_lora_params_t *in_params,
                         xTaskHandle calling_task) {
     if (validate_params(in_params) == ESP_OK) {
+        if (xSemaphoreTake(xRadioSemaphore, portMAX_DELAY)) {
 #ifdef CONFIG_SX126x
-        LoRaConfig(radio_params.spreading_factor, radio_params.bandwidth,
-                   radio_params.coding_rate, radio_params.preamble_len, 0,
-                   radio_params.crc_on, false);
+            LoRaConfig(radio_params.spreading_factor, radio_params.bandwidth,
+                       radio_params.coding_rate, radio_params.preamble_len, 0,
+                       radio_params.crc_on, false);
+            SetRfFrequency(radio_params.frequency);
+            SetRx(0xFFFFFF);
 #else
-        ESP_LOGD(TAG, "Setting radio parameters");
-        xSemaphoreTake(xRadioSemaphore, (TickType_t)10);
-        lora_idle();
-        ESP_LOGD(TAG, "  Frequency %d", radio_params.frequency);
-        lora_set_frequency(radio_params.frequency);
-        ESP_LOGD(TAG, "  Bandwidth %d", radio_params.bandwidth);
-        lora_set_bandwidth(radio_params.bandwidth);
-        ESP_LOGD(TAG, "  Spreading Factor %d", radio_params.spreading_factor);
-        lora_set_spreading_factor(radio_params.spreading_factor);
-        ESP_LOGD(TAG, "  Transmit Power %d", radio_params.tx_power);
-        lora_set_tx_power(radio_params.tx_power);
-        ESP_LOGD(TAG, "  Coding Rate %d", radio_params.coding_rate);
-        lora_set_coding_rate(radio_params.coding_rate);
-        ESP_LOGD(TAG, "  Sync Word %d", radio_params.sync_word);
-        lora_set_sync_word(radio_params.sync_word);
-        ESP_LOGD(TAG, "  Implicit Header %d", radio_params.implicit_hdr);
-        if (radio_params.implicit_hdr) {
-            lora_explicit_header_mode();
-        } else {
-            // lora_implicit_header_mode(radio_params.payload_len);
-        }
-        ESP_LOGD(TAG, "  CRC Enable %d", radio_params.crc_on);
-        if (radio_params.crc_on)
-            lora_enable_crc();
-        else {
-            lora_disable_crc();
-        }
+            ESP_LOGD(TAG, "Setting radio parameters");
+            lora_idle();
+            ESP_LOGD(TAG, "  Frequency %d", radio_params.frequency);
+            lora_set_frequency(radio_params.frequency);
+            ESP_LOGD(TAG, "  Bandwidth %d", radio_params.bandwidth);
+            lora_set_bandwidth(radio_params.bandwidth);
+            ESP_LOGD(TAG, "  Spreading Factor %d",
+                     radio_params.spreading_factor);
+            lora_set_spreading_factor(radio_params.spreading_factor);
+            ESP_LOGD(TAG, "  Transmit Power %d", radio_params.tx_power);
+            lora_set_tx_power(radio_params.tx_power);
+            ESP_LOGD(TAG, "  Coding Rate %d", radio_params.coding_rate);
+            lora_set_coding_rate(radio_params.coding_rate);
+            ESP_LOGD(TAG, "  Sync Word %d", radio_params.sync_word);
+            lora_set_sync_word(radio_params.sync_word);
+            ESP_LOGD(TAG, "  Implicit Header %d", radio_params.implicit_hdr);
+            if (radio_params.implicit_hdr) {
+                lora_explicit_header_mode();
+            } else {
+                // lora_implicit_header_mode(radio_params.payload_len);
+            }
+            ESP_LOGD(TAG, "  CRC Enable %d", radio_params.crc_on);
+            if (radio_params.crc_on)
+                lora_enable_crc();
+            else {
+                lora_disable_crc();
+            }
 #endif
-        xSemaphoreGive(xRadioSemaphore);
+            xSemaphoreGive(xRadioSemaphore);
+        }
 
         if (calling_task) {
             xTaskNotifyGive(calling_task);
@@ -274,15 +280,15 @@ int app_lora_set_params(app_lora_params_t *in_params,
 int app_lora_init() {
     int error;
 #ifdef CONFIG_SX126x
-    LoRaDebugPrint(true);
     LoRaInit();
-    error = LoRaBegin(radio_params.frequency, DEFAULT_TX_POWER_DBM,
-                      DEFAULT_TCXO_VOLTAGE, false);
+    error = LoRaBegin(radio_params.frequency, DEFAULT_TX_POWER,
+                      DEFAULT_TCXO_VOLTAGE, DEFAULT_USE_REGULATOR_LDO);
 #else
     error = lora_init() ? 0 : 1;
 #endif
     if (!error) {
         xRadioSemaphore = xSemaphoreCreateBinary();
+        xSemaphoreGive(xRadioSemaphore);
         app_lora_set_params(&radio_params, NULL);
         ESP_LOGI(TAG, "LoRa module initialized");
         return ESP_OK;
