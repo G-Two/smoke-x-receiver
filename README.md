@@ -46,7 +46,7 @@ An ESP32 with attached Semtech LoRa transceiver operating in the 915 MHz ISM ban
 
 ### Software
 
-- ESP-IDF SDK v4.4 [installation instructions](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/)
+- ESP-IDF SDK v4.4 [installation instructions](https://docs.espressif.com/projects/esp-idf/en/release-v4.4/esp32/get-started/index.html)
 - Node.js and npm (to build the web UI assets)
 
 ---
