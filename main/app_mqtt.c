@@ -252,19 +252,26 @@ static esp_err_t init() {
     err = load_config_from_nvs();
 
     if (!err & app_mqtt_params.enabled) {
-        esp_mqtt_client_config_t mqtt_cfg = {
-            .uri = app_mqtt_params.uri,
-            .client_id = app_mqtt_params.identity,
-            .username = app_mqtt_params.username,
-            .password = app_mqtt_params.password};
-
-        if (strcasestr(app_mqtt_params.uri, "mqtts://")) {
-            mqtt_cfg.cert_pem = app_mqtt_params.ca_cert;
+        if (strlen(app_mqtt_params.uri) < 1) {
+            ESP_LOGE(TAG, "MQTT URI field is empty");
+            err = 1;
         }
 
-        client = esp_mqtt_client_init(&mqtt_cfg);
-        err = esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID,
-                                             mqtt_event_handler, NULL);
+        if (!err) {
+            esp_mqtt_client_config_t mqtt_cfg = {
+                .uri = app_mqtt_params.uri,
+                .client_id = app_mqtt_params.identity,
+                .username = app_mqtt_params.username,
+                .password = app_mqtt_params.password};
+
+            if (strcasestr(app_mqtt_params.uri, "mqtts://")) {
+                mqtt_cfg.cert_pem = app_mqtt_params.ca_cert;
+            }
+
+            client = esp_mqtt_client_init(&mqtt_cfg);
+            err = esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID,
+                                                 mqtt_event_handler, NULL);
+        }
     }
     return err;
 }
