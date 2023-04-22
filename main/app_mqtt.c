@@ -256,8 +256,11 @@ static esp_err_t init() {
             .uri = app_mqtt_params.uri,
             .client_id = app_mqtt_params.identity,
             .username = app_mqtt_params.username,
-            .password = app_mqtt_params.password,
-            .cert_pem = app_mqtt_params.ca_cert};
+            .password = app_mqtt_params.password};
+
+        if (strcasestr(app_mqtt_params.uri, "mqtts://")) {
+            mqtt_cfg.cert_pem = app_mqtt_params.ca_cert;
+        }
 
         client = esp_mqtt_client_init(&mqtt_cfg);
         err = esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID,
