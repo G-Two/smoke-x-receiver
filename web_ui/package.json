@@ -1,38 +1,39 @@
 {
-  "name": "web_ui",
+  "name": "smoke_x_ui",
   "private": true,
+  "version": "0.0.0",
+  "type": "module",
   "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint --ext .js,.vue --ignore-path .gitignore --fix src",
+    "format": "prettier .  --write"
   },
   "dependencies": {
+    "@formkit/addons": "^0.16.5",
+    "@formkit/icons": "next",
+    "@formkit/themes": "^0.17.0-4304213",
+    "@formkit/vue": "next",
     "axios": "^0.21.1",
-    "bootstrap-vue": "^2.21.2",
-    "chart.js": "^2.9.4",
-    "core-js": "^3.25.1",
-    "msw": "^0.36.4",
-    "vue": "^2.6.11",
-    "vue-burger-menu": "^2.0.5",
-    "vue-chartjs": "^3.5.1",
-    "vue-router": "^3.2.0"
+    "chart.js": "^4.3.0",
+    "luxon": "^3.3.0",
+    "msw": "^1.2.1",
+    "vue": "^3.2.47",
+    "vue-chartjs": "^5.2.0",
+    "vue-loading-overlay": "^6.0.3",
+    "vue-router": "^4.1.6"
   },
   "devDependencies": {
-    "@vue/cli-plugin-eslint": "^5.0.8",
-    "@vue/cli-plugin-router": "^5.0.8",
-    "@vue/cli-service": "^5.0.8",
-    "@babel/eslint-parser": "^7.19.1",
-    "compression-webpack-plugin": "^6.1.1",
-    "eslint": "^8.23.1",
-    "eslint-plugin-vue": "^9.5.0",
-    "vue-template-compiler": "^2.6.11",
-    "vue-eslint-parser": "^9.1.0"
+    "@vitejs/plugin-vue": "^4.1.0",
+    "eslint": "^8.40.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-vue": "^9.12.0",
+    "prettier": "^2.8.8",
+    "terser": "^5.17.3",
+    "vite": "^4.3.2",
+    "vite-plugin-compression": "^0.5.1"
   },
-  "browserslist": [
-    "> 1%",
-    "last 2 versions",
-    "not dead"
-  ],
   "msw": {
     "workerDirectory": "public"
   }

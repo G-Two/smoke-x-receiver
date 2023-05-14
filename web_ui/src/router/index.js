@@ -1,56 +1,34 @@
-import Vue from "vue"
-import VueRouter from "vue-router"
-import Wlan from "../views/Wlan.vue"
-
-Vue.use(VueRouter)
+import { createWebHistory, createRouter } from "vue-router"
+import WlanConfigForm from "../components/WlanConfigForm.vue"
+import StatusForm from "../components/StatusForm.vue"
+import MqttConfigForm from "../components/MqttConfigForm.vue"
+import SmokeXConfigForm from "../components/SmokeXConfigForm.vue"
 
 const routes = [
   {
+    path: "/",
+    name: "Status",
+    component: StatusForm,
+  },
+  {
     path: "/wlan",
     name: "Wlan",
-    component: Wlan,
-  },
-  {
-    path: "/lora",
-    name: "Lora",
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () =>
-      import(/* webpackChunkName: "about" */ "../views/Lora.vue"),
-  },
-  {
-    path: "/pairing",
-    name: "Pairing",
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () =>
-      import(/* webpackChunkName: "about" */ "../views/SmokeX.vue"),
+    component: WlanConfigForm,
   },
   {
     path: "/mqtt",
-    name: "MQTT",
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () =>
-      import(/* webpackChunkName: "about" */ "../views/Mqtt.vue"),
+    name: "mqtt",
+    component: MqttConfigForm,
   },
   {
-    path: "/",
-    name: "Status",
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () =>
-      import(/* webpackChunkName: "about" */ "../views/Status.vue"),
+    path: "/pairing",
+    name: "pairing",
+    component: SmokeXConfigForm,
   },
 ]
 
-const router = new VueRouter({
-  mode: "history",
-  base: process.env.BASE_URL,
+const router = createRouter({
+  history: createWebHistory(),
   routes,
 })
 

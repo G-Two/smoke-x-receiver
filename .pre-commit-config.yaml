@@ -23,11 +23,10 @@ repos:
     hooks:
       - id: eslint
         additional_dependencies:
-          - eslint@^8.23.1
-          - eslint-plugin-vue@^9.5.0
-          - vue-eslint-parser@^9.1.0
+          - eslint@^8.40.0
+          - eslint-plugin-vue@^9.12.0
         args:
-          [--config=web_ui/.eslintrc.js, --ignore-pattern=web_ui/dist/*, --fix]
+          [--config=web_ui/.eslintrc.cjs, --ignore-pattern=web_ui/dist/*, --fix]
         files: \.(js|ts|vue)?$
         types: [file]
 

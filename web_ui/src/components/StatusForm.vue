@@ -1,44 +1,69 @@
 <template>
-  <div class="container">
-    <b-overlay
-      :show="!loaded"
-      rounded="sm"
-      variant="white"
-      opacity="0.15"
-      no-fade
-    >
-      <line-chart
-        :chart-data="chartData"
-        :options="options"
-      />
-    </b-overlay>
+  <div id="canvasWrapper" style="position: relative; height: 80vh">
+    <Line v-if="loaded" :data="chartData" :options="options" />
+    <h3 v-else>
+      <br />
+      No temperature information received
+    </h3>
   </div>
 </template>
 
 <script>
-import LineChart from "./LineChart.js"
+import { Line } from "vue-chartjs"
+import {
+  Chart as ChartJS,
+  Title,
+  Tooltip,
+  Legend,
+  LineElement,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+} from "chart.js"
 import * as axios from "axios"
+import { DateTime } from "luxon"
+
+ChartJS.register(
+  Title,
+  Tooltip,
+  Legend,
+  LineElement,
+  CategoryScale,
+  LinearScale,
+  PointElement
+)
 
 export default {
-  name: "LineChartContainer",
-  components: { LineChart },
+  name: "LineChart",
+  // eslint-disable-next-line
+  components: { Line },
   data: () => ({
-    timer: null,
     loaded: false,
     chartData: null,
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "bottom",
+        },
+      },
       scales: {
-        xAxes: [
-          {
-            type: "time",
-            time: {
-              unit: "minutes",
-              displayFormats: { minutes: "HH:mm" },
-            },
+        x: {
+          border: {
+            display: true,
           },
-        ],
+          grid: {
+            display: true,
+            drawOnChartArea: true,
+            drawTicks: true,
+          },
+        },
+        y: {
+          border: {
+            display: true,
+          },
+        },
       },
     },
   }),
@@ -46,19 +71,17 @@ export default {
     await this.getData()
     this.timer = setInterval(this.getData, 30000)
   },
-  beforeDestroy: function () {
+  beforeUnmount: function () {
     clearInterval(this.timer)
   },
   methods: {
     convertData(data) {
-      const date = new Date()
-      const now = date.getTime()
+      const now = DateTime.now()
       const labels = Array(data.probe_1.history.length)
       for (var i = data.probe_1.history.length - 1; i >= 0; i--) {
-        labels[i] = now - i * 30000
+        labels[i] = now.minus({ seconds: i * 30 }).toFormat("HH:mm")
       }
       labels.reverse()
-      console.log(Object.values(data).length)
       if (Object.values(data).length == 3) {
         return {
           labels: labels,
@@ -69,7 +92,7 @@ export default {
               fill: false,
               borderColor: "rgb(200, 75, 75)",
               tension: 0,
-              pointRadius: 0,
+              pointRadius: 2,
             },
             {
               label: "Probe 2",
@@ -77,7 +100,7 @@ export default {
               fill: false,
               borderColor: "rgb(75, 192, 192)",
               tension: 0,
-              pointRadius: 0,
+              pointRadius: 2,
             },
           ],
         }
@@ -91,7 +114,7 @@ export default {
               fill: false,
               borderColor: "rgb(200, 75, 75)",
               tension: 0,
-              pointRadius: 0,
+              pointRadius: 2,
             },
             {
               label: "Probe 2",
@@ -99,7 +122,7 @@ export default {
               fill: false,
               borderColor: "rgb(75, 192, 192)",
               tension: 0,
-              pointRadius: 0,
+              pointRadius: 2,
             },
             {
               label: "Probe 3",
@@ -107,7 +130,7 @@ export default {
               fill: false,
               borderColor: "rgb(75, 200, 75)",
               tension: 0,
-              pointRadius: 0,
+              pointRadius: 2,
             },
             {
               label: "Probe 4",
@@ -115,7 +138,7 @@ export default {
               fill: false,
               borderColor: "rgb(192, 75, 192)",
               tension: 0,
-              pointRadius: 0,
+              pointRadius: 2,
             },
           ],
         }

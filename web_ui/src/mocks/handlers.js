@@ -1,6 +1,22 @@
 import { rest } from "msw"
 
 export default [
+  rest.get("/status", (req, res, ctx) => {
+    return res(
+      ctx.delay(500),
+      ctx.json({
+        wifi: 1,
+        paired: true,
+        num_probes: 4,
+        probe1: 160.4,
+        probe2: 162.4,
+        probe3: 163.4,
+        probe4: 164.4,
+        billows: true,
+        billows_target: 225,
+      })
+    )
+  }),
   rest.get("/data", (req, res, ctx) => {
     return res(
       ctx.delay(500),
@@ -84,6 +100,15 @@ export default [
         ssid: "fun_wifi_thing",
         username: "a_username",
         password: "a_password",
+      })
+    )
+  }),
+  rest.post("/wlan-config", (req, res, ctx) => {
+    ctx.body
+    return res(
+      ctx.delay(500),
+      ctx.json({
+        success: true,
       })
     )
   }),

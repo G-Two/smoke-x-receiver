@@ -2,8 +2,8 @@
 
 This is an ESP32+LoRa application that receives LoRa radio bursts from a [ThermoWorks Smoke X2](https://www.thermoworks.com/smokex2/) or [Smoke X4](https://www.thermoworks.com/smokex4/) remote thermometer and publishes temperature data to an MQTT broker. This project was designed specifically to integrate with Home Assistant, but may also be used with any other MQTT-based application. This device will work alongside any existing Smoke X2/X4 receivers (i.e. all paired receivers will still function). In addition, this application may operate in a standalone fashion (WLAN interface in AP mode without MQTT or Home Assistant) for field use.
 
->**Note**
->This application is **<ins>not</ins>** compatible with the original [ThermoWorks Smoke](https://www.thermoworks.com/smoke/) or [ThermoWorks Signals](https://www.thermoworks.com/signals/) products.
+> **Note**
+> This application is **<ins>not</ins>** compatible with the original [ThermoWorks Smoke](https://www.thermoworks.com/smoke/) or [ThermoWorks Signals](https://www.thermoworks.com/signals/) products.
 
 ---
 
@@ -21,15 +21,13 @@ This is an ESP32+LoRa application that receives LoRa radio bursts from a [Thermo
 
 ## Motivation
 
-The Smoke X has a great long RF range and doesn't need an internet connection, mobile app, or a user account to function. But the device only shows current/max/min probe readings, with no means of recording or tracking trends. This ESP32+LoRa application allows users to have all the benefits of the Smoke X and also visualize the temperature history as well as have the ability to send the data to a recorder via MQTT. I use a kamado style grill for smoking and am constantly refining my methods. It is helpful for me to keep data to learn from mistakes such as the example below when I lost control of my grill temperature.
-
-<img width="1602" alt="screenshot" src="https://user-images.githubusercontent.com/7310260/190879396-e9dd20b8-dca5-4b48-9fbd-fe4c0fc18d6c.png">
+The Smoke X has a great long RF range and doesn't need an internet connection, mobile app, or a user account to function. But the device only shows current/max/min probe readings, with no means of recording or tracking trends. This application allows users to have all the benefits of the Smoke X and also visualize the temperature history as well as have the ability to send the data to a recorder via MQTT.
 
 This application supports the following dataflow:
 
 ```mermaid
 flowchart LR
-  base -->|LoRa RF| esp32 
+  base -->|LoRa RF| esp32
   mqclient --> mq
   mq --> ha
   web --> browser(Any web browser)
@@ -62,7 +60,10 @@ flowchart LR
     ha_dev
   end
 ```
-All data is acquired, processed, and stored locally. Once data is ingested, it can just be another part of your Home Assistant dataflow (i.e. you can forward the data to InfluxDB and visualize in Grafana, as illustrated above). Even if you're not a Home Assistant user, you can still use this application's built-in web interface to monitor your temperatures and watch for trends.
+
+All data is acquired, processed, and stored locally. Once data is ingested, it can just be another part of your Home Assistant dataflow (i.e. you can forward the data to InfluxDB and visualize in Grafana, as illustrated below). Even if you're not a Home Assistant user, you can still use this application's built-in web interface to monitor your temperatures and watch for trends.
+
+<img width="1602" alt="screenshot" src="https://user-images.githubusercontent.com/7310260/190879396-e9dd20b8-dca5-4b48-9fbd-fe4c0fc18d6c.png">
 
 ---
 
@@ -151,7 +152,6 @@ The "Pairing" tab of the web UI will indicate that the device requires pairing t
 Once paired, the status page will display a temperature graph:
 
 <img width="405" alt="screenshot" src="https://user-images.githubusercontent.com/7310260/150705723-5d0896be-6a5a-4b4c-8cb7-534bb355dd1f.png">
-
 
 ### MQTT Configuration
 
@@ -252,14 +252,6 @@ _NOTE:_ X4 devices will also include additional data for probes 3 and 4
 
 ---
 
-## LoRa
-
-There is a LoRa configuration page in the web UI. Configuration of the LoRa modem is done automatically, and changing any of these settings will likely result in loss of sync with your Smoke X. Changes done in this menu are non-persistent, and a reboot of the ESP32 will return the device to a mode compatible with the Smoke X.
-
-<img width="409" alt="LoRa" src="https://user-images.githubusercontent.com/7310260/150706197-6107c5c5-6f34-4970-8ba2-f622217ae69e.png">
-
----
-
 ## Development
 
 PRs to fix bugs or enhance/add functionality are welcome! If you have successfully built the application, you have everything needed to modify it.
@@ -284,7 +276,7 @@ This application is built with the ESP-IDF v4 SDK and has external dependencies 
 The web interface is written in Vue and is loaded onto the ESP32 flash file system as compressed static web assets which are served by the ESP32 web server. To aid in development and manual testing, the web interface can be previewed with:
 
 ```
-$ ./mock_www.sh
+$ ./mock_web_ui.sh
 ```
 
 ### TODO

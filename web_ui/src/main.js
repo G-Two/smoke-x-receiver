@@ -1,41 +1,19 @@
-import Vue from "vue"
+import { createApp } from "vue"
 import App from "./App.vue"
-import {
-  TooltipPlugin,
-  FormPlugin,
-  LayoutPlugin,
-  ButtonPlugin,
-  FormInputPlugin,
-  FormTextareaPlugin,
-  FormCheckboxPlugin,
-  FormRadioPlugin,
-  FormGroupPlugin,
-  OverlayPlugin,
-} from "bootstrap-vue"
-import "bootstrap/dist/css/bootstrap.css"
-//import "bootstrap-vue/dist/bootstrap-vue.css";
+import { plugin } from "@formkit/vue"
+import formKitConfig from "./formkit.config"
 import router from "./router"
 
-// For tree shaking purposes
-Vue.use(TooltipPlugin)
-Vue.use(FormPlugin)
-Vue.use(LayoutPlugin)
-Vue.use(ButtonPlugin)
-Vue.use(FormCheckboxPlugin)
-Vue.use(FormInputPlugin)
-Vue.use(FormTextareaPlugin)
-Vue.use(FormGroupPlugin)
-Vue.use(FormRadioPlugin)
-Vue.use(OverlayPlugin)
+async function startApp() {
+  if (process.env.NODE_ENV === "development") {
+    const { worker } = await import("./mocks/browser")
+    worker.start()
+  }
 
-Vue.config.productionTip = false
-
-if (process.env.NODE_ENV === "development") {
-  const { worker } = require("./mocks/browser")
-  worker.start()
+  const app = createApp(App)
+  app.use(plugin, formKitConfig)
+  app.use(router)
+  app.mount("#app")
 }
 
-new Vue({
-  router,
-  render: (h) => h(App),
-}).$mount("#app")
+startApp()

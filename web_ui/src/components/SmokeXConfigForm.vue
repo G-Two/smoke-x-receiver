@@ -1,76 +1,75 @@
 <template>
-  <div id="smoke-x-config-form">
-    <center>
-      <b-overlay
-        :show="!dataReceived"
-        rounded="sm"
-        variant="white"
-        opacity="0.85"
-        no-fade
-      >
-        <form class="status">
-          <b>Status:</b> {{ isPaired ? "PAIRED" : "NOT PAIRED" }} <br>
-          <b>Model:</b> {{ deviceModel ? deviceModel : "---" }} <br>
-          <b>Device ID:</b> {{ deviceId ? deviceId : "---" }} <br>
-          <b>Frequency:</b>
-          {{
-            currentFrequency
-              ? (currentFrequency / 1000000).toPrecision(6) + " MHz"
-              : "---"
-          }}
-          <HR />
-          <center>
-            <div v-if="dataReceived">
-              <b-button
-                v-if="isPaired == true"
-                id="unpair_button"
-                block
-                variant="danger"
-                @click.prevent="unpair()"
-              >
-                Unpair
-              </b-button>
-              <b-form v-else>
-                Please enable "SYNC" mode on your Smoke X transmitter unit. This
-                device will pair automatically. Other Smoke X receivers that
-                have already been paired with the same transmitter will not be
-                affected.
-              </b-form>
-            </div>
-          </center>
-        </form>
-      </b-overlay>
-    </center>
+  <div id="smoke-x-config-form" class="vl-parent">
+    <FormKit
+      type="form"
+      submit-label="Unpair"
+      :disabled="!isPaired"
+      @submit="unpair"
+    >
+      <loading v-model:active="isLoading" />
+      <div class="status">
+        <b>Status:</b>
+        {{ isLoading ? "---" : isPaired ? "PAIRED" : "NOT PAIRED" }} <br />
+        <b>Model:</b>
+        {{ isPaired ? deviceModel : "---" }} <br />
+        <b>Device ID:</b> {{ deviceId ? deviceId : "---" }} <br />
+        <b>Frequency:</b>
+        {{
+          currentFrequency
+            ? (currentFrequency / 1000000).toPrecision(6) + " MHz"
+            : "---"
+        }}
+        <div v-if="isLoading == false">
+          <div v-if="isPaired == false">
+            <br />
+            <img
+              :src="image"
+              style="
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+                width: 75%;
+              "
+            />
+            <br />
+            Press and hold the sync button on your Smoke X base station until
+            "SYNC" appears on the display. This device will pair with the base
+            station automatically within a few seconds. Other Smoke X receivers
+            that have already been paired with the same base station will not be
+            affected.
+          </div>
+        </div>
+      </div>
+    </FormKit>
   </div>
 </template>
 
 <script>
 import * as axios from "axios"
+import Loading from "vue-loading-overlay"
+import "vue-loading-overlay/dist/css/index.css"
+import Img1 from "/src/sync_button.png"
 
 export default {
   name: "SmokeXConfigForm",
+  components: {
+    Loading,
+  },
   data() {
     return {
       isPaired: false,
-      currentFrequency: 0,
+      currentFrequency: null,
       deviceId: null,
       deviceModel: null,
-      dataReceived: false,
+      isLoading: true,
+      image: Img1,
     }
   },
-  mounted: async function () {
-    axios
-      .get("pairing-status")
-      .then((res) => {
-        this.isPaired = res.data.isPaired
-        this.currentFrequency = res.data.currentFrequency
-        this.deviceId = res.data.deviceId
-        this.deviceModel = res.data.deviceModel
-        this.dataReceived = true
-      })
-      .catch((error) => {
-        console.log(error)
-      })
+  created: async function () {
+    this.timer = setInterval(this.getData, 2000)
+  },
+  beforeUnmount: function () {
+    clearInterval(this.timer)
   },
   methods: {
     unpair() {
@@ -81,19 +80,44 @@ export default {
         axios.post("cmd", json).catch((error) => {
           console.log(error)
         })
+        this.isPaired = false
+        this.currentFrequency = null
+        this.deviceId = null
+        this.deviceModel = null
+        this.timer = setInterval(this.getData, 2000)
       }
+    },
+    async getData() {
+      axios
+        .get("pairing-status")
+        .then((res) => {
+          this.isPaired = res.data.isPaired
+          this.currentFrequency = res.data.currentFrequency
+          this.deviceId = res.data.deviceId
+          this.deviceModel = res.data.deviceModel
+          this.isLoading = false
+          if (this.isPaired) {
+            clearInterval(this.timer)
+          }
+        })
+        .catch((error) => {
+          console.log(error)
+        })
     },
   },
 }
 </script>
 
-<style scoped>
-label {
-  font-weight: bold;
-  margin-bottom: 0;
-}
-
-#unpair_button {
-  width: 8rem;
+<style>
+.status {
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #2c3e50;
+  padding-top: 1rem;
+  margin: 0;
+  margin-bottom: 2rem;
+  text-align: left;
+  color: #2c3e50;
 }
 </style>

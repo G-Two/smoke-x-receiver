@@ -1,111 +1,81 @@
 <template>
   <div id="wlan-config-form">
-    <b-overlay
-      :show="!dataReceived"
-      rounded="sm"
-      variant="white"
-      opacity="0.85"
-      no-fade
-    >
-      <center>
-        <b-form>
-          <label>Mode</label>
-          <b-form-group>
-            <b-form-radio
-              v-model.number="mode"
-              v-b-tooltip.hover.left
-              title="Connect to existing wireless network"
-              value="1"
-            >
-              Client
-            </b-form-radio>
-            <b-form-radio
-              v-model.number="mode"
-              v-b-tooltip.hover.left
-              title="Other devices connect directly to this device"
-              value="2"
-            >
-              Access Point
-            </b-form-radio>
-          </b-form-group>
-
-          <label>Authentication</label>
-          <b-form-group>
-            <b-form-radio
-              v-model.number="authType"
-              value="0"
-            >
-              Open
-            </b-form-radio>
-            <b-form-radio
-              v-model.number="authType"
-              value="3"
-            >
-              WPA2 PSK
-            </b-form-radio>
-            <b-form-radio
-              v-if="mode == 1"
-              v-model.number="authType"
-              value="5"
-            >
-              WPA2 Enterprise
-            </b-form-radio>
-          </b-form-group>
-
-          <label for="SSID">SSID</label>
-          <b-form-input
-            id="SSID"
-            v-model="ssid"
-          />
-
-          <label
-            v-if="authType == 5"
-            for="username"
-          >Username</label>
-          <b-form-input
-            v-if="authType == 5"
-            id="username"
-            v-model="username"
-          />
-
-          <label
-            v-if="authType != 0"
-            for="password"
-          >Password</label>
-          <b-form-input
-            v-if="authType != 0"
-            id="password"
-            v-model="password"
-          />
-          <center>
-            <b-button
-              id="apply_button"
-              block
-              variant="primary"
-              @click.prevent="sendToServer"
-            >
-              Save & Apply
-            </b-button>
-          </center>
-        </b-form>
-      </center>
-    </b-overlay>
+    <loading v-model:active="isLoading" />
+    <FormKit v-slot="{ value }" type="form" @submit="sendToServer">
+      <FormKit
+        id="mode"
+        type="radio"
+        name="mode"
+        label="WLAN Mode"
+        :options="{
+          '1': 'Client',
+          '2': 'Access Point',
+        }"
+        value="1"
+        validation="required"
+      />
+      <FormKit
+        id="authType"
+        type="radio"
+        name="authType"
+        label="WLAN Security"
+        :options="
+          value.mode == 1
+            ? {
+                '0': 'Open',
+                '3': 'WPA2 Pre-Shared Key',
+                '5': 'WPA2 Enterprise',
+              }
+            : {
+                '0': 'Open',
+                '3': 'WPA2 Pre-Shared Key',
+              }
+        "
+        value="3"
+        validation="required"
+      />
+      <FormKit
+        id="ssid"
+        type="text"
+        name="ssid"
+        label="SSID"
+        validation="required"
+      />
+      <FormKit
+        id="username"
+        :disabled="value.authType != 5"
+        type="text"
+        name="username"
+        label="Username"
+        :validation="value.authType != 5 ? 'optional' : 'required'"
+      />
+      <FormKit
+        id="password"
+        :disabled="value.authType == 0"
+        type="password"
+        name="password"
+        label="Password"
+        :validation="value.authType == 0 ? 'optional' : 'required'"
+      />
+      <!-- <pre>{{ value }}</pre> -->
+    </FormKit>
   </div>
 </template>
 
 <script>
 import * as axios from "axios"
+import { getNode } from "@formkit/core"
+import Loading from "vue-loading-overlay"
+import "vue-loading-overlay/dist/css/index.css"
 
 export default {
   name: "WlanConfigForm",
+  components: {
+    Loading,
+  },
   data() {
     return {
-      mode: 1,
-      authType: 5,
-      ssid: "",
-      username: "",
-      password: "",
-      dataReceived: false,
+      isLoading: true,
     }
   },
   mounted: async function () {
@@ -113,44 +83,25 @@ export default {
       .get("wlan-config")
       .then((res) => {
         console.log(res)
-        this.mode = res.data.mode
-        this.authType = res.data.authType
-        this.ssid = res.data.ssid
-        this.username = res.data.username
-        this.password = res.data.password
-        this.dataReceived = true
+        getNode("mode").input(res.data.mode)
+        getNode("authType").input(res.data.authType)
+        getNode("ssid").input(res.data.ssid)
+        getNode("username").input(res.data.username)
+        getNode("password").input(res.data.password)
+        this.isLoading = false
       })
       .catch((error) => {
         console.log(error)
       })
   },
   methods: {
-    sendToServer() {
+    async sendToServer(fields) {
       if (confirm("Commit these settings to NVRAM?")) {
-        axios
-          .post("wlan-config", {
-            mode: this.mode,
-            ssid: this.ssid,
-            authType: this.authType,
-            username: this.username,
-            password: this.password,
-          })
-          .catch((error) => {
-            console.log(error)
-          })
+        axios.post("wlan-config", fields).catch((error) => {
+          console.log(error)
+        })
       }
     },
   },
 }
 </script>
-
-<style scoped>
-label {
-  font-weight: bold;
-  margin-bottom: 0;
-}
-
-#apply_button {
-  width: 8rem;
-}
-</style>
