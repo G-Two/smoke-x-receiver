@@ -66,6 +66,7 @@ export default {
     }
   },
   created: async function () {
+    await this.getData()
     this.timer = setInterval(this.getData, 2000)
   },
   beforeUnmount: function () {
