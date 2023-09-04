@@ -27,7 +27,9 @@ The Smoke X is solidly built, accurate, has great RF range, and doesn't need the
 
 This application allows Smoke X users to collect the temperature data from the RF signal and visualize the temperature history through a web UI (served by the ESP32), a Home Assistant dashboard, and/or any other data visualization tools.
 
-<img width="200" alt="Smoke X Receiver Web UI" src="https://github.com/G-Two/smoke-x-receiver/assets/7310260/20c633df-3ff2-4824-a4d0-355b7b6bf542"><img width="200" alt="Home Assistant View" src="https://github.com/G-Two/smoke-x-receiver/assets/7310260/7c8a6e96-fa64-48a2-a019-9a4e9b140ee6"><img width="800" alt="Grafana View" src="https://github.com/G-Two/smoke-x-receiver/assets/7310260/87173f91-347e-41b0-bbb0-df5d6ebd69d9">
+<img width="200" alt="Smoke X Receiver Web UI" src="https://github.com/G-Two/smoke-x-receiver/assets/7310260/20c633df-3ff2-4824-a4d0-355b7b6bf542" hspace="10"><img width="200" alt="Home Assistant View" src="https://github.com/G-Two/smoke-x-receiver/assets/7310260/7c8a6e96-fa64-48a2-a019-9a4e9b140ee6" hspace="10" >
+
+<img width="800" alt="Grafana View" src="https://github.com/G-Two/smoke-x-receiver/assets/7310260/87173f91-347e-41b0-bbb0-df5d6ebd69d9">
 
 All data is acquired, processed, and stored locally as shown below:
 
