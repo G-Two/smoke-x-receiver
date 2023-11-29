@@ -27,7 +27,6 @@
         placeholder="-----BEGIN CERTIFICATE-----
 Paste CA certificate in PEM format
 -----END CERTIFICATE-----"
-        validation="required"
       />
       <FormKit
         id="ha_discovery"
