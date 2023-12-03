@@ -125,6 +125,8 @@ static esp_err_t rest_common_get_handler(httpd_req_t *req) {
         strlcat(filepath, "/index.html", sizeof(filepath));
     } else {
         strlcat(filepath, req->uri, sizeof(filepath));
+        // filenames other than index.html are hashed, so cache for a long time
+        httpd_resp_set_hdr(req, "Cache-Control", "max-age=604800");
     }
     strlcat(filepath, ".gz", sizeof(filepath));
     int fd = open(filepath, O_RDONLY, 0);
@@ -136,7 +138,6 @@ static esp_err_t rest_common_get_handler(httpd_req_t *req) {
 
     set_content_type_from_file(req, filepath);
     httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-    httpd_resp_set_hdr(req, "Cache-Control", "max-age=604800");
 
     char *chunk = rest_context->scratch;
     ssize_t read_bytes;
