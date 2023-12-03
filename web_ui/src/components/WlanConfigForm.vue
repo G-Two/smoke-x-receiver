@@ -8,10 +8,10 @@
         name="mode"
         label="WLAN Mode"
         :options="{
-          '1': 'Client',
-          '2': 'Access Point',
+          1: 'Client',
+          2: 'Access Point',
         }"
-        value="1"
+        value=1
         validation="required"
       />
       <FormKit
@@ -22,16 +22,16 @@
         :options="
           value.mode == 1
             ? {
-                '0': 'Open',
-                '3': 'WPA2 Pre-Shared Key',
-                '5': 'WPA2 Enterprise',
+                0: 'Open',
+                3: 'WPA2 Pre-Shared Key',
+                5: 'WPA2 Enterprise',
               }
             : {
-                '0': 'Open',
-                '3': 'WPA2 Pre-Shared Key',
+                0: 'Open',
+                3: 'WPA2 Pre-Shared Key',
               }
         "
-        value="3"
+        value=3
         validation="required"
       />
       <FormKit
@@ -97,6 +97,8 @@ export default {
   methods: {
     async sendToServer(fields) {
       if (confirm("Commit these settings to NVRAM?")) {
+        fields.authType=parseInt(fields.authType)
+        fields.mode=parseInt(fields.mode)
         axios.post("wlan-config", fields).catch((error) => {
           console.log(error)
         })
