@@ -1,3 +1,10 @@
+<script setup>
+const handleIconClick = (node) => {
+  node.props.suffixIcon = node.props.suffixIcon === 'eye' ? 'eyeClosed' : 'eye'
+  node.props.type = node.props.type === 'password' ? 'text' : 'password'
+}
+</script>
+
 <template>
   <div id="wlan-config-form">
     <loading v-model:active="isLoading" />
@@ -56,8 +63,9 @@
         name="password"
         label="Password"
         :validation="value.authType == 0 ? 'optional' : 'required'"
+        suffix-icon="eyeClosed"
+        @suffix-icon-click="handleIconClick"
       />
-      <!-- <pre>{{ value }}</pre> -->
     </FormKit>
   </div>
 </template>

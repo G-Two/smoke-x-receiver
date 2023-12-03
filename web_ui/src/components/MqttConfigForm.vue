@@ -1,3 +1,10 @@
+<script setup>
+const handleIconClick = (node) => {
+  node.props.suffixIcon = node.props.suffixIcon === 'eye' ? 'eyeClosed' : 'eye'
+  node.props.type = node.props.type === 'password' ? 'text' : 'password'
+}
+</script>
+
 <template>
   <div id="mqtt-config-form">
     <loading v-model:active="isLoading" />
@@ -17,7 +24,10 @@
       />
       <FormKit id="identity" type="text" name="identity" label="Identity" />
       <FormKit id="username" type="text" name="username" label="Username" />
-      <FormKit id="password" type="password" name="password" label="Password" />
+      <FormKit
+id="password" type="password" name="password" label="Password"
+        suffix-icon="eyeClosed"
+        @suffix-icon-click="handleIconClick" />
       <FormKit
         id="ca_cert"
         type="textarea"
