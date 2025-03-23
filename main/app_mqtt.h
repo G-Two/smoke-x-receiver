@@ -7,6 +7,9 @@
 #define APP_MQTT_ENABLED "enabled"
 #define APP_MQTT_IDENTITY "identity"
 #define APP_MQTT_CA_CERT "ca_cert"
+#define APP_MQTT_CLIENT_CERT "client_cert"
+#define APP_MQTT_CLIENT_KEY "client_key"
+#define APP_MQTT_CERT_AUTH "cert_auth"
 #define APP_MQTT_HA_DISCOVERY "ha_discovery"
 #define APP_MQTT_HA_BASE_TOPIC "ha_base_topic"
 #define APP_MQTT_HA_STATUS_TOPIC "ha_status_topic"
@@ -26,6 +29,9 @@ typedef struct {
     char* username;
     char* password;
     char* ca_cert;
+    char* client_cert;
+    char* client_key;
+    bool cert_auth;
     bool enabled;
     bool ha_discovery;
     char* ha_base_topic;

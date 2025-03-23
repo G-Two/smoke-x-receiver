@@ -377,6 +377,13 @@ static esp_err_t mqtt_config_get_handler(httpd_req_t *req) {
     cJSON_AddStringToObject(
         root, APP_MQTT_CA_CERT,
         app_mqtt_params.ca_cert ? app_mqtt_params.ca_cert : "");
+    cJSON_AddStringToObject(
+        root, APP_MQTT_CLIENT_CERT,
+        app_mqtt_params.client_cert ? app_mqtt_params.client_cert : "");
+    cJSON_AddStringToObject(
+        root, APP_MQTT_CLIENT_KEY,
+        app_mqtt_params.client_key ? app_mqtt_params.client_key : "");
+    cJSON_AddBoolToObject(root, APP_MQTT_CERT_AUTH, app_mqtt_params.cert_auth);
     cJSON_AddBoolToObject(root, APP_MQTT_ENABLED, app_mqtt_params.enabled);
     cJSON_AddBoolToObject(root, APP_MQTT_HA_DISCOVERY,
                           app_mqtt_params.ha_discovery);
@@ -444,10 +451,28 @@ static esp_err_t mqtt_config_set_handler(httpd_req_t *req) {
                        APP_MQTT_MAX_PASSWORD_LEN);
     json_check_strncpy(root, &app_mqtt_params.ca_cert, APP_MQTT_CA_CERT,
                        APP_MQTT_MAX_CERT_LEN);
-    app_mqtt_params.enabled =
-        cJSON_GetObjectItem(root, APP_MQTT_ENABLED)->valueint;
-    app_mqtt_params.ha_discovery =
-        cJSON_GetObjectItem(root, APP_MQTT_HA_DISCOVERY)->valueint;
+    json_check_strncpy(root, &app_mqtt_params.client_cert, APP_MQTT_CLIENT_CERT,
+                       APP_MQTT_MAX_CERT_LEN);
+    json_check_strncpy(root, &app_mqtt_params.client_key, APP_MQTT_CLIENT_KEY,
+                       APP_MQTT_MAX_CERT_LEN);
+    cJSON *cert_auth_item = cJSON_GetObjectItem(root, APP_MQTT_CERT_AUTH);
+    if (cert_auth_item) {
+        app_mqtt_params.cert_auth = cert_auth_item->valueint;
+    } else {
+        ESP_LOGE(TAG, "Key '%s' not found in JSON", APP_MQTT_CERT_AUTH);
+    }
+    cJSON *enabled_item = cJSON_GetObjectItem(root, APP_MQTT_ENABLED);
+    if (enabled_item) {
+        app_mqtt_params.enabled = enabled_item->valueint;
+    } else {
+        ESP_LOGE(TAG, "Key '%s' not found in JSON", APP_MQTT_ENABLED);
+    }
+    cJSON *ha_discovery_item = cJSON_GetObjectItem(root, APP_MQTT_HA_DISCOVERY);
+    if (ha_discovery_item) {
+        app_mqtt_params.ha_discovery = ha_discovery_item->valueint;
+    } else {
+        ESP_LOGE(TAG, "Key '%s' not found in JSON", APP_MQTT_HA_DISCOVERY);
+    }
     json_check_strncpy(root, &app_mqtt_params.ha_base_topic,
                        APP_MQTT_HA_BASE_TOPIC, APP_MQTT_MAX_TOPIC_LEN);
     json_check_strncpy(root, &app_mqtt_params.ha_status_topic,

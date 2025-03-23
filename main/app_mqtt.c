@@ -32,6 +32,9 @@ static app_mqtt_params_t app_mqtt_params = {.uri = NULL,
                                             .username = NULL,
                                             .password = NULL,
                                             .ca_cert = NULL,
+                                            .cert_auth = false,
+                                            .client_cert = NULL,
+                                            .client_key = NULL,
                                             .enabled = false,
                                             .ha_discovery = false,
                                             .ha_base_topic = NULL,
@@ -63,11 +66,17 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
     esp_mqtt_event_handle_t event = event_data;
 
     switch ((esp_mqtt_event_id_t)event_id) {
+        case MQTT_EVENT_BEFORE_CONNECT:
+            ESP_LOGI(TAG, "MQTT_EVENT_BEFORE_CONNECT");
+            break;
         case MQTT_EVENT_CONNECTED:
             ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
             esp_mqtt_client_subscribe(client, app_mqtt_params.ha_status_topic,
                                       1);
             connected = true;
+            break;
+        case MQTT_EVENT_SUBSCRIBED:
+            ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED");
             break;
         case MQTT_EVENT_DISCONNECTED:
             ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
@@ -152,6 +161,26 @@ static esp_err_t load_config_from_nvs() {
                               &len);
         }
 
+        err = nvs_get_str(h_nvs, APP_MQTT_CLIENT_CERT, NULL, &len);
+        if (!err) {
+            app_mqtt_params.client_cert = malloc(len);
+            err = nvs_get_str(h_nvs, APP_MQTT_CLIENT_CERT,
+                              app_mqtt_params.client_cert, &len);
+        }
+
+        err = nvs_get_str(h_nvs, APP_MQTT_CLIENT_KEY, NULL, &len);
+        if (!err) {
+            app_mqtt_params.client_key = malloc(len);
+            err = nvs_get_str(h_nvs, APP_MQTT_CLIENT_KEY,
+                              app_mqtt_params.client_key, &len);
+        }
+
+        err = nvs_get_i8(h_nvs, APP_MQTT_CERT_AUTH,
+                         (int8_t *)&app_mqtt_params.cert_auth);
+        if (err) {
+            app_mqtt_params.cert_auth = false;
+        }
+
         err = nvs_get_i8(h_nvs, APP_MQTT_ENABLED,
                          (int8_t *)&app_mqtt_params.enabled);
         if (err) {
@@ -216,6 +245,12 @@ static esp_err_t save_config_to_nvs() {
         err = nvs_set_str(h_nvs, APP_MQTT_PASSWORD, app_mqtt_params.password);
         err = nvs_set_str(h_nvs, APP_MQTT_IDENTITY, app_mqtt_params.identity);
         err = nvs_set_str(h_nvs, APP_MQTT_CA_CERT, app_mqtt_params.ca_cert);
+        err = nvs_set_str(h_nvs, APP_MQTT_CLIENT_CERT,
+                          app_mqtt_params.client_cert);
+        err =
+            nvs_set_str(h_nvs, APP_MQTT_CLIENT_KEY, app_mqtt_params.client_key);
+        err = nvs_set_i8(h_nvs, APP_MQTT_CERT_AUTH,
+                         (int8_t)app_mqtt_params.cert_auth);
         err = nvs_set_i8(h_nvs, APP_MQTT_ENABLED,
                          (int8_t)app_mqtt_params.enabled);
         err = nvs_set_i8(h_nvs, APP_MQTT_HA_DISCOVERY,
@@ -266,6 +301,11 @@ static esp_err_t init() {
 
             if (strcasestr(app_mqtt_params.uri, "mqtts://")) {
                 mqtt_cfg.cert_pem = app_mqtt_params.ca_cert;
+                if (app_mqtt_params.cert_auth && app_mqtt_params.client_cert &&
+                    app_mqtt_params.client_key) {
+                    mqtt_cfg.client_cert_pem = app_mqtt_params.client_cert;
+                    mqtt_cfg.client_key_pem = app_mqtt_params.client_key;
+                }
             }
 
             client = esp_mqtt_client_init(&mqtt_cfg);
@@ -299,8 +339,6 @@ bool app_mqtt_is_enabled() { return app_mqtt_params.enabled; }
 void app_mqtt_stop() {
     if (client) {
         ESP_LOGI(TAG, "Stopping MQTT client");
-        esp_mqtt_client_disconnect(client);
-        esp_mqtt_client_stop(client);
         esp_mqtt_client_destroy(client);
         connected = false;
         client = NULL;

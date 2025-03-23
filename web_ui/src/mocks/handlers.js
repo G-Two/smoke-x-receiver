@@ -135,6 +135,16 @@ export default [
           "-----BEGIN CERTIFICATE-----\n\
 Paste Certificate Here\n\
 -----END CERTIFICATE-----",
+        client_cert:
+          "-----BEGIN CERTIFICATE-----\n\
+Paste Client Certificate Here\n\
+-----END CERTIFICATE-----",
+        client_key:
+          "-----BEGIN KEY-----\n\
+Paste Client Key Here\n\
+-----END KEY-----",
+        use_mqtt: true,
+        cert_auth: false,
         enabled: true,
         ha_discovery: true,
         ha_base_topic: "homeassistant",

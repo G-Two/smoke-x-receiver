@@ -1,4 +1,10 @@
 <script setup>
+import { ref } from 'vue'
+
+const clientCertAuth = ref(false)
+const useTLS = ref(false)
+const HADiscovery = ref(false)
+
 const handleIconClick = (node) => {
   node.props.suffixIcon = node.props.suffixIcon === 'eye' ? 'eyeClosed' : 'eye'
   node.props.type = node.props.type === 'password' ? 'text' : 'password'
@@ -28,7 +34,15 @@ const handleIconClick = (node) => {
 id="password" type="password" name="password" label="Password"
         suffix-icon="eyeClosed"
         @suffix-icon-click="handleIconClick" />
+        <FormKit
+      id="use_tls"
+      v-model="useTLS"
+      type="checkbox"
+      label="Use TLS"
+      name="use_tls"
+      />
       <FormKit
+       v-show="useTLS"
         id="ca_cert"
         type="textarea"
         name="ca_cert"
@@ -39,12 +53,44 @@ Paste CA certificate in PEM format
 -----END CERTIFICATE-----"
       />
       <FormKit
+      v-show="useTLS"
+      id="cert_auth"
+      v-model="clientCertAuth"
+      type="checkbox"
+      label="Use Client Certificate Authentication"
+      name="cert_auth"
+      />
+    <FormKit
+      v-show="clientCertAuth && useTLS"
+      id="client_cert"
+      type="textarea"
+      name="client_cert"
+      label="Client Certificate"
+      rows="10"
+      placeholder="-----BEGIN CERTIFICATE-----
+Paste client certificate in PEM format
+-----END CERTIFICATE-----"
+    />
+    <FormKit
+      v-show="clientCertAuth && useTLS"
+      id="client_key"
+      type="textarea"
+      name="client_key"
+      label="Client Key"
+      rows="10"
+      placeholder="-----BEGIN KEY-----
+Paste client key in PEM format
+-----END KEY-----"
+    />
+      <FormKit
         id="ha_discovery"
+        v-model="HADiscovery"
         type="checkbox"
         label="Enable Home Assistant Device Discovery"
         name="ha_discovery"
       />
       <FormKit
+        v-show="HADiscovery"
         id="ha_base_topic"
         type="text"
         name="ha_base_topic"
@@ -53,6 +99,7 @@ Paste CA certificate in PEM format
         value="homeassistant"
       />
       <FormKit
+        v-show="HADiscovery"
         id="ha_status_topic"
         type="text"
         name="ha_status_topic"
@@ -61,6 +108,7 @@ Paste CA certificate in PEM format
         value="homeassistant/status"
       />
       <FormKit
+        v-show="HADiscovery"
         id="ha_birth_payload"
         type="text"
         name="ha_birth_payload"
@@ -69,6 +117,7 @@ Paste CA certificate in PEM format
         value="online"
       />
       <FormKit
+        v-show="HADiscovery"
         id="state_topic"
         type="text"
         name="state_topic"
@@ -108,6 +157,9 @@ export default {
         getNode("username").input(res.data.username)
         getNode("password").input(res.data.password)
         getNode("ca_cert").input(res.data.ca_cert)
+        getNode("cert_auth").input(res.data.cert_auth)
+        getNode("client_cert").input(res.data.client_cert)
+        getNode("client_key").input(res.data.client_key)
         getNode("enabled").input(res.data.enabled)
         getNode("ha_discovery").input(res.data.ha_discovery)
         getNode("ha_base_topic").input(res.data.ha_base_topic)
