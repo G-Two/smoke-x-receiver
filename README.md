@@ -99,6 +99,10 @@ An ESP32 with attached Semtech LoRa transceiver operating in the 915 MHz ISM ban
   $ git clone --recurse-submodules git@github.com:G-Two/smoke-x-receiver.git
   $ cd smoke-x-receiver
   ```
+- If you have Cmake version 4 or later, you may need to enable backwards compatibility with Cmake 3.5.
+  ```bash
+  $ export CMAKE_POLICY_VERSION_MINIMUM=3.5
+  ```
 
 ### Configure
 
