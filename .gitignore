@@ -1,7 +1,7 @@
 **/*
 
 !clang-format
-!mock_www.sh
+!mock_web_ui.sh
 !pre-commit-config.yaml
 !CMakeLists.txt
 !LICENSE
@@ -11,6 +11,7 @@
 !README.md
 !partitions.csv
 !sdkconfig.defaults
+!sdkconfig.defaults.*
 
 # ESP32 Code
 !/main
