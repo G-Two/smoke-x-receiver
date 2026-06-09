@@ -173,4 +173,58 @@ menu "*** Smoke X Receiver HW/App Config ***"
 
     endmenu
 
+    config HELTEC_OLED
+        bool "Enable Heltec onboard OLED (SSD1306)"
+        default n
+        help
+            Drive the 128x64 OLED on Heltec WiFi LoRa 32 boards.
+
+    menu "Heltec OLED Configuration"
+        depends on HELTEC_OLED
+
+        config HELTEC_OLED_SDA_GPIO
+            int "OLED SDA GPIO"
+            range 0 48 if IDF_TARGET_ESP32S3
+            range 0 33 if IDF_TARGET_ESP32
+            default 17 if IDF_TARGET_ESP32S3
+            default 4
+            help
+                I2C data line for the onboard SSD1306.
+
+        config HELTEC_OLED_SCL_GPIO
+            int "OLED SCL GPIO"
+            range 0 48 if IDF_TARGET_ESP32S3
+            range 0 33 if IDF_TARGET_ESP32
+            default 18 if IDF_TARGET_ESP32S3
+            default 15
+            help
+                I2C clock line for the onboard SSD1306.
+
+        config HELTEC_OLED_RST_GPIO
+            int "OLED RST GPIO"
+            range -1 48 if IDF_TARGET_ESP32S3
+            range -1 33 if IDF_TARGET_ESP32
+            default 21 if IDF_TARGET_ESP32S3
+            default 16
+            help
+                Reset line for the onboard SSD1306. Set to -1 if unused.
+
+        config HELTEC_OLED_VEXT_GPIO
+            int "OLED power (Vext) GPIO"
+            range -1 48 if IDF_TARGET_ESP32S3
+            range -1 33 if IDF_TARGET_ESP32
+            default 36 if IDF_TARGET_ESP32S3
+            default 21
+            help
+                Heltec external power enable. Pulled LOW to power the OLED.
+
+        config HELTEC_OLED_I2C_FREQ_HZ
+            int "OLED I2C clock frequency (Hz)"
+            range 100000 1000000
+            default 400000
+            help
+                I2C bus speed for the SSD1306.
+
+    endmenu
+
 endmenu
