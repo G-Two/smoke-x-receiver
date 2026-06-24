@@ -152,7 +152,12 @@ init-idf: check-idf
 
 # --- Heltec install ---
 
+define ensure_clean_build_dir
+	if [ -d "$(1)" ] && [ ! -f "$(1)/CMakeCache.txt" ]; then rm -rf "$(1)"; fi
+endef
+
 $(V2_BUILD)/.target-esp32: check-idf
+	$(call ensure_clean_build_dir,$(V2_BUILD))
 	$(call idf,$(V2_DEFAULTS),$(V2_BUILD),set-target esp32)
 	@touch $@
 
@@ -186,6 +191,7 @@ clean-heltec-v2:
 heltec-v2: install-heltec-v2
 
 $(V3_BUILD)/.target-esp32s3: check-idf
+	$(call ensure_clean_build_dir,$(V3_BUILD))
 	$(call idf,$(V3_DEFAULTS),$(V3_BUILD),set-target esp32s3)
 	@touch $@
 

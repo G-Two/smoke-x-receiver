@@ -6,6 +6,7 @@
 #include "app_mqtt.h"
 #include "app_web_ui.h"
 #include "app_wifi.h"
+#include "app_display.h"
 #include "smoke_x.h"
 
 static const char* TAG = "smoke_x_main";
@@ -83,6 +84,12 @@ void app_main() {
     smoke_x_start();
     app_wifi_init();
     app_web_ui_start();
+
+#if CONFIG_HELTEC_OLED
+    if (app_display_init() == ESP_OK) {
+        app_display_start();
+    }
+#endif
 
 #if defined(CONFIG_FREERTOS_USE_TRACE_FACILITY) && \
     defined(CONFIG_FREERTOS_USE_STATS_FORMATTING_FUNCTIONS)

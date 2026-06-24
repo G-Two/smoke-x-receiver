@@ -3,6 +3,7 @@
 #include <esp_event.h>
 #include <esp_log.h>
 #include <string.h>
+#include <stdio.h>
 #include <esp_wpa2.h>
 #include <esp_netif.h>
 #include <nvs.h>
@@ -234,4 +235,42 @@ void app_wifi_init() {
         app_wifi_init_ap(CONFIG_DEFAULT_WIFI_AP_SSID,
                          CONFIG_DEFAULT_WIFI_AP_PASSWORD);
     }
+}
+
+bool app_wifi_is_connected() {
+    if (!wifi_event_group) {
+        return false;
+    }
+    return (xEventGroupGetBits(wifi_event_group) & CONNECTED_BIT) != 0;
+}
+
+bool app_wifi_is_ap_mode() {
+    wifi_mode_t mode;
+
+    if (esp_wifi_get_mode(&mode) != ESP_OK) {
+        return app_wifi_params.mode == WIFI_MODE_AP;
+    }
+
+    return mode == WIFI_MODE_AP;
+}
+
+esp_err_t app_wifi_get_ip_str(char *buf, size_t len) {
+    esp_netif_ip_info_t ip_info;
+
+    if (!buf || len == 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (!sta_netif) {
+        snprintf(buf, len, "-");
+        return ESP_OK;
+    }
+
+    if (esp_netif_get_ip_info(sta_netif, &ip_info) != ESP_OK) {
+        snprintf(buf, len, "-");
+        return ESP_OK;
+    }
+
+    snprintf(buf, len, IPSTR, IP2STR(&ip_info.ip));
+    return ESP_OK;
 }

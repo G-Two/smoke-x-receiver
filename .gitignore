@@ -13,6 +13,12 @@
 !sdkconfig.defaults
 !sdkconfig.defaults.*
 
+!docs
+!docs/**
+
+!scripts
+!scripts/**
+
 # ESP32 Code
 !/main
 !/main/**
