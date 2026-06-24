@@ -81,28 +81,50 @@ An ESP32 with attached Semtech LoRa transceiver operating in the 915 MHz ISM ban
 
 ### Software
 
-- ESP-IDF SDK v4.4 [installation instructions](https://docs.espressif.com/projects/esp-idf/en/release-v4.4/esp32/get-started/index.html)
+- [ESP-IDF SDK v4.4](https://docs.espressif.com/projects/esp-idf/en/release-v4.4/esp32/get-started/index.html) (provides `idf.py` and the ESP32 toolchain)
 - Node.js and npm (to build the web UI assets)
 
 ---
 
 ## Build
 
+### Install ESP-IDF
+
+`idf.py` is not installed separately — it ships with the ESP-IDF SDK. This project targets **ESP-IDF v4.4**.
+
+On macOS, a typical first-time install looks like:
+
+```bash
+mkdir -p ~/esp
+cd ~/esp
+git clone -b release/v4.4 --recursive https://github.com/espressif/esp-idf.git
+cd esp-idf
+./install.sh esp32,esp32s3
+```
+
+See the official guide for other platforms and install options:
+https://docs.espressif.com/projects/esp-idf/en/release-v4.4/esp32/get-started/index.html
+
 ### Prepare Environment
 
-- Activate ESP-IDF
-  ```bash
-  $ source /path/to/esp-idf/export.sh
-  ```
-- Clone this repo (including its submodules) and enter the directory.
-  ```bash
-  $ git clone --recurse-submodules git@github.com:G-Two/smoke-x-receiver.git
-  $ cd smoke-x-receiver
-  ```
-- If you have Cmake version 4 or later, you may need to enable backwards compatibility with Cmake 3.5.
-  ```bash
-  $ export CMAKE_POLICY_VERSION_MINIMUM=3.5
-  ```
+Every new terminal session must activate ESP-IDF before using `idf.py` directly. Firmware `make` targets source it automatically.
+
+```bash
+source ~/esp/esp-idf/export.sh   # adjust path if you cloned elsewhere
+# or verify via make:
+make init-idf
+idf.py --version
+```
+
+Then clone this repo (including its submodules) and install web UI dependencies:
+
+```bash
+git clone --recurse-submodules git@github.com:G-Two/smoke-x-receiver.git
+cd smoke-x-receiver
+make setup
+```
+
+If you have Cmake version 4 or later, you may need to enable backwards compatibility with Cmake 3.5 (the Makefile sets this automatically for firmware targets).
 
 ### Configure
 
@@ -125,11 +147,19 @@ An ESP32 with attached Semtech LoRa transceiver operating in the 915 MHz ISM ban
 
 ### Build and Flash
 
-- Connect your ESP32 to your computer and run:
-  ```bash
-  $ idf.py set-target esp32s3 # If using a Heltec WiFi LoRa 32 v3, otherwise set target as appropriate to your hardware
-  $ idf.py flash
-  ```
+Connect your ESP32 and run one of:
+
+```bash
+make install-heltec-v3   # Heltec WiFi LoRa 32 V3 (default)
+make install-heltec-v2   # Heltec WiFi LoRa 32 V2
+```
+
+Or manually:
+
+```bash
+idf.py set-target esp32s3   # use esp32 for Heltec V2
+idf.py flash
+```
 
 The application and web assets will be built and written to the ESP32 flash.
 

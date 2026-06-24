@@ -1,0 +1,14 @@
+# Heltec WiFi LoRa 32 V2 (ESP32 + SX1276)
+# https://heltec.org/project/wifi-lora-32/
+
+CONFIG_IDF_TARGET="esp32"
+
+# CONFIG_SX126x is not set
+CONFIG_SX127x=y
+
+# Heltec WiFi LoRa 32 v2 SPI pin assignments (see README)
+CONFIG_CS_GPIO=18
+CONFIG_RST_GPIO=14
+CONFIG_MISO_GPIO=19
+CONFIG_MOSI_GPIO=27
+CONFIG_SCK_GPIO=5
