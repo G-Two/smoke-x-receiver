@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <string.h>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
@@ -46,7 +47,7 @@ static int validate_params(app_lora_params_t *in_params) {
         if (range_check(in_params->frequency, FREQ_MIN, FREQ_MAX)) {
             radio_params.frequency = in_params->frequency;
         } else {
-            ESP_LOGE(TAG, "invalid frequency %d", in_params->frequency);
+            ESP_LOGE(TAG, "invalid frequency %" PRIu32, in_params->frequency);
         }
     }
 
@@ -54,7 +55,7 @@ static int validate_params(app_lora_params_t *in_params) {
         if (range_check(in_params->bandwidth, BW_MIN, BW_MAX)) {
             radio_params.bandwidth = in_params->bandwidth;
         } else {
-            ESP_LOGE(TAG, "invalid bandwidth %d", in_params->bandwidth);
+            ESP_LOGE(TAG, "invalid bandwidth %" PRIu32, in_params->bandwidth);
         }
     }
 
@@ -121,7 +122,8 @@ static void tx_task(void *pvParameter) {
         xTaskNotifyGive(args->sending_task);
         uint32_t interval = args->repeat_interval_ms;
 
-        ESP_LOGI(TAG, "Starting LoRa Tx msg='%s' interval=%dms", msg, interval);
+        ESP_LOGI(TAG, "Starting LoRa Tx msg='%s' interval=%" PRIu32 "ms", msg,
+                 interval);
         while (1) {
             tx_msg(msg);
             vTaskDelay(pdMS_TO_TICKS(interval));
@@ -220,7 +222,7 @@ int app_lora_get_params(app_lora_params_t *out_params) {
 }
 
 int app_lora_set_params(app_lora_params_t *in_params,
-                        xTaskHandle calling_task) {
+                        TaskHandle_t calling_task) {
     if (validate_params(in_params) == ESP_OK) {
         if (xSemaphoreTake(xRadioSemaphore, portMAX_DELAY)) {
 #ifdef CONFIG_SX126x
@@ -232,9 +234,9 @@ int app_lora_set_params(app_lora_params_t *in_params,
 #else
             ESP_LOGD(TAG, "Setting radio parameters");
             lora_idle();
-            ESP_LOGD(TAG, "  Frequency %d", radio_params.frequency);
+            ESP_LOGD(TAG, "  Frequency %" PRIu32, radio_params.frequency);
             lora_set_frequency(radio_params.frequency);
-            ESP_LOGD(TAG, "  Bandwidth %d", radio_params.bandwidth);
+            ESP_LOGD(TAG, "  Bandwidth %" PRIu32, radio_params.bandwidth);
             lora_set_bandwidth(radio_params.bandwidth);
             ESP_LOGD(TAG, "  Spreading Factor %d",
                      radio_params.spreading_factor);
@@ -263,14 +265,14 @@ int app_lora_set_params(app_lora_params_t *in_params,
 
         if (calling_task) {
             xTaskNotifyGive(calling_task);
-            ESP_LOGD(
-                TAG,
-                "New radio parameters set\n f=%d\n bw=%d\n sf=%d\n "
-                "tx_power=%d\n cr=%d\n sync=%x\n impl_hdr=%d\n crc_on=%d\n",
-                radio_params.frequency, radio_params.bandwidth,
-                radio_params.spreading_factor, radio_params.tx_power,
-                radio_params.coding_rate, radio_params.sync_word,
-                radio_params.implicit_hdr, radio_params.crc_on);
+            ESP_LOGD(TAG,
+                     "New radio parameters set\n f=%" PRIu32 "\n bw=%" PRIu32
+                     "\n sf=%d\n tx_power=%d\n cr=%d\n sync=%x\n impl_hdr=%d\n "
+                     "crc_on=%d\n",
+                     radio_params.frequency, radio_params.bandwidth,
+                     radio_params.spreading_factor, radio_params.tx_power,
+                     radio_params.coding_rate, radio_params.sync_word,
+                     radio_params.implicit_hdr, radio_params.crc_on);
         }
         return ESP_OK;
     }

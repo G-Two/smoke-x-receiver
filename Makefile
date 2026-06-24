@@ -14,21 +14,21 @@
 
 IDF_PY ?= idf.py
 PORT ?=
-CMAKE_POLICY ?= CMAKE_POLICY_VERSION_MINIMUM=3.5
 
-# ESP-IDF v4.4 supports Python 3.8–3.11. Prefer Homebrew python@3.11 shims, then
-# versioned python3.x binaries already on PATH.
+# ESP-IDF v5.4 supports Python 3.9+ (no upper bound). Prefer Homebrew python@3.x
+# shims, then versioned python3.x binaries already on PATH.
 IDF_PYTHON_DIR := $(shell \
-	python_ok() { "$$1" -c 'import sys; sys.exit(0 if (3,8) <= sys.version_info[:2] <= (3,11) else 1)' 2>/dev/null; }; \
-	for dir in \
-		/opt/homebrew/opt/python@3.11/libexec/bin \
-		/usr/local/opt/python@3.11/libexec/bin \
-		$$(brew --prefix 2>/dev/null)/opt/python@3.11/libexec/bin; do \
-		test -n "$$dir" || continue; \
-		test -x "$$dir/python3" && python_ok "$$dir/python3" && { echo "$$dir"; exit 0; }; \
-		test -x "$$dir/python" && python_ok "$$dir/python" && { echo "$$dir"; exit 0; }; \
+	python_ok() { "$$1" -c 'import sys; sys.exit(0 if sys.version_info[:2] >= (3,9) else 1)' 2>/dev/null; }; \
+	brew_prefix=$$(brew --prefix 2>/dev/null); \
+	for ver in 3.14 3.13 3.12 3.11 3.10 3.9; do \
+		for prefix in /opt/homebrew /usr/local $$brew_prefix; do \
+			test -n "$$prefix" || continue; \
+			dir="$$prefix/opt/python@$$ver/libexec/bin"; \
+			test -x "$$dir/python3" && python_ok "$$dir/python3" && { echo "$$dir"; exit 0; }; \
+			test -x "$$dir/python" && python_ok "$$dir/python" && { echo "$$dir"; exit 0; }; \
+		done; \
 	done; \
-	for cmd in python3.11 python3.10 python3.9 python3.8 python3 python; do \
+	for cmd in python3.14 python3.13 python3.12 python3.11 python3.10 python3.9 python3 python; do \
 		path=$$(command -v $$cmd 2>/dev/null) || continue; \
 		python_ok "$$path" && { dirname "$$path"; exit 0; }; \
 	done \
@@ -54,7 +54,7 @@ define source_idf
 	$(IDF_PYTHON_PATH) . "$(IDF_EXPORT)"
 endef
 
-# check-python: Verify ESP-IDF-compatible Python (3.8–3.11) is available
+# check-python: Verify ESP-IDF-compatible Python (3.9+) is available
 check-python:
 	@if [ -n "$(IDF_PYTHON_DIR)" ]; then \
 		if [ -x "$(IDF_PYTHON_DIR)/python3" ]; then \
@@ -65,7 +65,7 @@ check-python:
 		echo "ESP-IDF Python: $$($$py --version) ($$py)"; \
 	else \
 		echo ""; \
-		echo "Error: No supported Python found (ESP-IDF v4.4 needs 3.8–3.11)."; \
+		echo "Error: No supported Python found (ESP-IDF v5.4 needs 3.9+)."; \
 		echo ""; \
 		echo "Install dependencies and retry:"; \
 		echo "  brew bundle"; \
@@ -87,8 +87,8 @@ check-idf: check-python
 		echo "Error: ESP-IDF export script not found at:"; \
 		echo "  $(IDF_EXPORT)"; \
 		echo ""; \
-		echo "Install ESP-IDF v4.4, then retry or set IDF_EXPORT:"; \
-		echo "  https://docs.espressif.com/projects/esp-idf/en/release-v4.4/esp32/get-started/"; \
+		echo "Install ESP-IDF v5.4, then retry or set IDF_EXPORT:"; \
+		echo "  https://docs.espressif.com/projects/esp-idf/en/release-v5.4/esp32/get-started/"; \
 		echo "  make init-idf IDF_EXPORT=/path/to/esp-idf/export.sh"; \
 		echo ""; \
 		exit 1; \
@@ -103,7 +103,7 @@ check-idf: check-python
 	}
 
 define idf
-	$(IDF_PYTHON_PATH) . "$(IDF_EXPORT)" && $(CMAKE_POLICY) SDKCONFIG_DEFAULTS="$(1)" $(IDF_PY) -B $(2) $(3)
+	$(IDF_PYTHON_PATH) . "$(IDF_EXPORT)" && SDKCONFIG_DEFAULTS="$(1)" $(IDF_PY) -B $(2) $(3)
 endef
 
 .PHONY: help check-python check-idf init-idf \

@@ -6,4 +6,18 @@ idf_component_register(
          "app_wifi.c"
          "main.c"
          "smoke_x.c"
-    INCLUDE_DIRS ".")
+    INCLUDE_DIRS "."
+    REQUIRES driver
+             esp_event
+             esp_http_server
+             esp_netif
+             esp_timer
+             esp_wifi
+             json
+             lora
+             mqtt
+             nvs_flash
+             ra01s
+             spiffs
+             vfs
+             wpa_supplicant)

@@ -81,7 +81,7 @@ An ESP32 with attached Semtech LoRa transceiver operating in the 915 MHz ISM ban
 
 ### Software
 
-- [ESP-IDF SDK v4.4](https://docs.espressif.com/projects/esp-idf/en/release-v4.4/esp32/get-started/index.html) (provides `idf.py` and the ESP32 toolchain)
+- [ESP-IDF SDK v5.4](https://docs.espressif.com/projects/esp-idf/en/release-v5.4/esp32/get-started/index.html) (provides `idf.py` and the ESP32 toolchain)
 - Node.js and npm (to build the web UI assets)
 
 ---
@@ -90,20 +90,20 @@ An ESP32 with attached Semtech LoRa transceiver operating in the 915 MHz ISM ban
 
 ### Install ESP-IDF
 
-`idf.py` is not installed separately — it ships with the ESP-IDF SDK. This project targets **ESP-IDF v4.4**.
+`idf.py` is not installed separately — it ships with the ESP-IDF SDK. This project targets **ESP-IDF v5.4**.
 
 On macOS, a typical first-time install looks like:
 
 ```bash
 mkdir -p ~/esp
 cd ~/esp
-git clone -b release/v4.4 --recursive https://github.com/espressif/esp-idf.git
+git clone -b release/v5.4 --recursive https://github.com/espressif/esp-idf.git
 cd esp-idf
 ./install.sh esp32,esp32s3
 ```
 
 See the official guide for other platforms and install options:
-https://docs.espressif.com/projects/esp-idf/en/release-v4.4/esp32/get-started/index.html
+https://docs.espressif.com/projects/esp-idf/en/release-v5.4/esp32/get-started/index.html
 
 ### Prepare Environment
 

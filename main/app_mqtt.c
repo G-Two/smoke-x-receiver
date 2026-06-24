@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <stdlib.h>
 #include <esp_log.h>
 #include <esp_system.h>
@@ -61,8 +62,8 @@ static void log_error_if_nonzero(const char *message, int error_code) {
 
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
                                int32_t event_id, void *event_data) {
-    ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%d", base,
-             event_id);
+    ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRId32,
+             base, event_id);
     esp_mqtt_event_handle_t event = event_data;
 
     switch ((esp_mqtt_event_id_t)event_id) {
@@ -294,17 +295,21 @@ static esp_err_t init() {
 
         if (!err) {
             esp_mqtt_client_config_t mqtt_cfg = {
-                .uri = app_mqtt_params.uri,
-                .client_id = app_mqtt_params.identity,
-                .username = app_mqtt_params.username,
-                .password = app_mqtt_params.password};
+                .broker.address.uri = app_mqtt_params.uri,
+                .credentials.client_id = app_mqtt_params.identity,
+                .credentials.username = app_mqtt_params.username,
+                .credentials.authentication.password = app_mqtt_params.password,
+            };
 
             if (strcasestr(app_mqtt_params.uri, "mqtts://")) {
-                mqtt_cfg.cert_pem = app_mqtt_params.ca_cert;
+                mqtt_cfg.broker.verification.certificate =
+                    app_mqtt_params.ca_cert;
                 if (app_mqtt_params.cert_auth && app_mqtt_params.client_cert &&
                     app_mqtt_params.client_key) {
-                    mqtt_cfg.client_cert_pem = app_mqtt_params.client_cert;
-                    mqtt_cfg.client_key_pem = app_mqtt_params.client_key;
+                    mqtt_cfg.credentials.authentication.certificate =
+                        app_mqtt_params.client_cert;
+                    mqtt_cfg.credentials.authentication.key =
+                        app_mqtt_params.client_key;
                 }
             }
 
@@ -483,8 +488,8 @@ void app_mqtt_publish_discovery() {
     MQTT_PUBLISH(client, topic_str, buf);
 
 #if APP_DEBUG > 0
-    ESP_LOGD(TAG, "Free Heap: %d", xPortGetFreeHeapSize());
-    ESP_LOGD(TAG, "Num Records: %d", smoke_x_get_num_records());
+    ESP_LOGD(TAG, "Free Heap: %zu", xPortGetFreeHeapSize());
+    ESP_LOGD(TAG, "Num Records: %u", smoke_x_get_num_records());
 #endif
 
     cJSON_Delete(root);
@@ -556,8 +561,8 @@ void app_mqtt_publish_state() {
     MQTT_PUBLISH(client, app_mqtt_params.state_topic, buf);
 
 #if APP_DEBUG > 0
-    ESP_LOGD(TAG, "Free Heap: %d", xPortGetFreeHeapSize());
-    ESP_LOGD(TAG, "Num Records: %d", smoke_x_get_num_records());
+    ESP_LOGD(TAG, "Free Heap: %zu", xPortGetFreeHeapSize());
+    ESP_LOGD(TAG, "Num Records: %u", smoke_x_get_num_records());
 #endif
 
     cJSON_Delete(root);

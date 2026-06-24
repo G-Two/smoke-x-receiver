@@ -4,7 +4,7 @@
 # prior to generating sdkconfig. You may also make changes
 # to sdkconfig directly or via menuconfig
 # For additional information, see documentation at:
-# https://docs.espressif.com/projects/esp-idf/en/v4.4.3/esp32/api-reference/kconfig.html
+# https://docs.espressif.com/projects/esp-idf/en/release-v5.4/esp32/api-reference/kconfig.html
 #
 #################################################################
 

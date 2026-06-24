@@ -65,7 +65,8 @@ int app_lora_start_rx(void (*cb)(const char*, const int));
 int app_lora_stop_tx();
 int app_lora_stop_rx();
 int app_lora_get_params(app_lora_params_t* out_params);
-int app_lora_set_params(app_lora_params_t* in_params, xTaskHandle calling_task);
+int app_lora_set_params(app_lora_params_t* in_params,
+                        TaskHandle_t calling_task);
 int app_lora_init();
 
 #endif

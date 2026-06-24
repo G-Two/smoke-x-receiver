@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <esp_event.h>
@@ -43,7 +44,7 @@ void smoke_x_event_handler(void* handler_arg, esp_event_base_t base,
             }
             break;
         default:
-            ESP_LOGE(TAG, "Unknown message type received: %d", event_id);
+            ESP_LOGE(TAG, "Unknown message type received: %" PRId32, event_id);
     }
 }
 
