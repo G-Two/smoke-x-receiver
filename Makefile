@@ -1,14 +1,20 @@
 # Smoke X Receiver
 #
-# Prerequisites:
-#   brew bundle        # python@3.11, cmake, ninja (see Brewfile)
-#   make check-python  # verify a supported Python is available
-#   make init-idf      # verify ESP-IDF (firmware targets auto-source export.sh)
-#   make setup
+# Prerequisites (install via your system package manager, e.g. brew / apt / dnf):
+#   - Python 3.9+, Node.js + npm, CMake >= 3.16
+#   - ESP-IDF v5.4 (firmware targets auto-source export.sh)
+#
+# First-time setup:
+#   make check-python  # verify a supported Python is detected
+#   make init-idf      # verify ESP-IDF is reachable
+#   make setup         # init submodules and install web UI deps
 #
 # Options:
-#   PORT=/dev/cu.usbserial-XXXX  Serial port for flash/monitor (auto-detect if omitted)
+#   PORT=/dev/...                          Serial port for flash/monitor (auto-detect if omitted)
+#                                          Linux: /dev/ttyUSB0, /dev/ttyACM0
+#                                          macOS: /dev/cu.usbserial-XXXX
 #   IDF_EXPORT=/path/to/esp-idf/export.sh  Override ESP-IDF location
+#                                          (also honors IDF_PATH; defaults to ~/esp/esp-idf)
 
 .DEFAULT_GOAL := help
 
@@ -54,6 +60,8 @@ define source_idf
 	$(IDF_PYTHON_PATH) . "$(IDF_EXPORT)"
 endef
 
+# --- Project setup ---
+
 # check-python: Verify ESP-IDF-compatible Python (3.9+) is available
 check-python:
 	@if [ -n "$(IDF_PYTHON_DIR)" ]; then \
@@ -67,9 +75,10 @@ check-python:
 		echo ""; \
 		echo "Error: No supported Python found (ESP-IDF v5.4 needs 3.9+)."; \
 		echo ""; \
-		echo "Install dependencies and retry:"; \
-		echo "  brew bundle"; \
-		echo "  make check-python"; \
+		echo "Install Python 3.9+ via your system package manager, e.g.:"; \
+		echo "  macOS:        brew install python@3.12"; \
+		echo "  Debian/Ubuntu: sudo apt install python3"; \
+		echo "  Fedora/RHEL:   sudo dnf install python3"; \
 		echo ""; \
 		current=$$(command -v python3 2>/dev/null); \
 		if [ -n "$$current" ]; then \
@@ -110,11 +119,9 @@ endef
 	build-heltec-v2 build-heltec-v3 \
 	flash-heltec-v2 flash-heltec-v3 \
 	flash-monitor-heltec-v2 flash-monitor-heltec-v3 \
-	install-heltec-v2 install-heltec-v3 \
 	monitor-heltec-v2 monitor-heltec-v3 \
 	menuconfig-heltec-v2 menuconfig-heltec-v3 \
 	clean clean-heltec-v2 clean-heltec-v3 \
-	heltec-v2 heltec-v3 \
 	submodules setup \
 	mock-web-ui build-web-ui web-ui-install web-ui-lint web-ui-format clean-web-ui
 
@@ -143,23 +150,31 @@ help:
 	@echo "Firmware targets auto-source: $(IDF_EXPORT)"
 	@echo "For interactive shells: source \"$(IDF_EXPORT)\""
 
-# --- Project setup ---
-
 # init-idf: Verify ESP-IDF is installed and print idf.py version
 init-idf: check-idf
 	@echo "ESP-IDF ready: $(IDF_EXPORT)"
 	@$(source_idf) && $(IDF_PY) --version
 
-# --- Heltec install ---
+submodules:
+	git submodule update --init --recursive
+
+# setup: Initialize submodules and install web UI dependencies
+setup: submodules web-ui-install
 
 define ensure_clean_build_dir
 	if [ -d "$(1)" ] && [ ! -f "$(1)/CMakeCache.txt" ]; then rm -rf "$(1)"; fi
 endef
 
+# --- Heltec V2 ---
+
 $(V2_BUILD)/.target-esp32: check-idf
 	$(call ensure_clean_build_dir,$(V2_BUILD))
 	$(call idf,$(V2_DEFAULTS),$(V2_BUILD),set-target esp32)
 	@touch $@
+
+# menuconfig-heltec-v2: Open menuconfig for V2
+menuconfig-heltec-v2: $(V2_BUILD)/.target-esp32
+	$(call idf,$(V2_DEFAULTS),$(V2_BUILD),menuconfig)
 
 # build-heltec-v2: Build firmware for Heltec WiFi LoRa 32 V2 (ESP32, SX1276)
 build-heltec-v2: $(V2_BUILD)/.target-esp32
@@ -169,9 +184,6 @@ build-heltec-v2: $(V2_BUILD)/.target-esp32
 flash-heltec-v2: $(V2_BUILD)/.target-esp32
 	$(call idf,$(V2_DEFAULTS),$(V2_BUILD),build flash $(PORT_ARG))
 
-# install-heltec-v2: Build and flash Heltec WiFi LoRa 32 V2
-install-heltec-v2: flash-heltec-v2
-
 # flash-monitor-heltec-v2: Build, flash, and open serial monitor (V2)
 flash-monitor-heltec-v2: $(V2_BUILD)/.target-esp32
 	$(call idf,$(V2_DEFAULTS),$(V2_BUILD),build flash monitor $(PORT_ARG))
@@ -180,20 +192,20 @@ flash-monitor-heltec-v2: $(V2_BUILD)/.target-esp32
 monitor-heltec-v2: check-idf
 	$(call idf,$(V2_DEFAULTS),$(V2_BUILD),monitor $(PORT_ARG))
 
-# menuconfig-heltec-v2: Open menuconfig for V2
-menuconfig-heltec-v2: $(V2_BUILD)/.target-esp32
-	$(call idf,$(V2_DEFAULTS),$(V2_BUILD),menuconfig)
-
 # clean-heltec-v2: Remove V2 build directory
 clean-heltec-v2:
 	rm -rf $(V2_BUILD)
 
-heltec-v2: install-heltec-v2
+# --- Heltec V3 ---
 
 $(V3_BUILD)/.target-esp32s3: check-idf
 	$(call ensure_clean_build_dir,$(V3_BUILD))
 	$(call idf,$(V3_DEFAULTS),$(V3_BUILD),set-target esp32s3)
 	@touch $@
+
+# menuconfig-heltec-v3: Open menuconfig for V3
+menuconfig-heltec-v3: $(V3_BUILD)/.target-esp32s3
+	$(call idf,$(V3_DEFAULTS),$(V3_BUILD),menuconfig)
 
 # build-heltec-v3: Build firmware for Heltec WiFi LoRa 32 V3 (ESP32-S3, SX1262)
 build-heltec-v3: $(V3_BUILD)/.target-esp32s3
@@ -203,9 +215,6 @@ build-heltec-v3: $(V3_BUILD)/.target-esp32s3
 flash-heltec-v3: $(V3_BUILD)/.target-esp32s3
 	$(call idf,$(V3_DEFAULTS),$(V3_BUILD),build flash $(PORT_ARG))
 
-# install-heltec-v3: Build and flash Heltec WiFi LoRa 32 V3
-install-heltec-v3: flash-heltec-v3
-
 # flash-monitor-heltec-v3: Build, flash, and open serial monitor (V3)
 flash-monitor-heltec-v3: $(V3_BUILD)/.target-esp32s3
 	$(call idf,$(V3_DEFAULTS),$(V3_BUILD),build flash monitor $(PORT_ARG))
@@ -214,15 +223,9 @@ flash-monitor-heltec-v3: $(V3_BUILD)/.target-esp32s3
 monitor-heltec-v3: check-idf
 	$(call idf,$(V3_DEFAULTS),$(V3_BUILD),monitor $(PORT_ARG))
 
-# menuconfig-heltec-v3: Open menuconfig for V3
-menuconfig-heltec-v3: $(V3_BUILD)/.target-esp32s3
-	$(call idf,$(V3_DEFAULTS),$(V3_BUILD),menuconfig)
-
 # clean-heltec-v3: Remove V3 build directory
 clean-heltec-v3:
 	rm -rf $(V3_BUILD)
-
-heltec-v3: install-heltec-v3
 
 # --- Web UI ---
 
@@ -249,13 +252,6 @@ web-ui-format:
 # clean-web-ui: Remove web_ui/node_modules and web_ui/dist
 clean-web-ui:
 	rm -rf web_ui/node_modules web_ui/dist
-
-# submodules: Initialize and update git submodules
-submodules:
-	git submodule update --init --recursive
-
-# setup: Initialize submodules and install web UI dependencies
-setup: submodules web-ui-install
 
 # --- Clean ---
 
