@@ -1,11 +1,10 @@
 #ifndef SMOKE_X_H
 #define SMOKE_X_H
 
-#include <stdbool.h>
 #include <esp_event.h>
+#include "smoke_x_types.h"
 
-#define SMOKE_X_APP_VERSION "0.1.0"
-#define SMOKE_X_DEVICE_ID_LEN 8
+#define SMOKE_X_APP_VERSION "1.2.0"
 #define SMOKE_X_PROBE_1 "probe_1"
 #define SMOKE_X_PROBE_2 "probe_2"
 #define SMOKE_X_PROBE_3 "probe_3"
@@ -23,31 +22,6 @@ typedef enum {
     SMOKE_X_EVENT_STATE_MSG_RECEIVED,
     SMOKE_X_EVENT_DISCOVERY_REQUIRED,
 } smoke_x_event_t;
-
-typedef struct {
-    unsigned int frequency;
-    char device_id[SMOKE_X_DEVICE_ID_LEN];
-    unsigned int num_probes;
-} smoke_x_config_t;
-
-typedef struct {
-    bool attached;
-    double temp;
-    bool alarm;
-    union {
-        int max_temp;
-        int billows_target;
-    };
-    int min_temp;
-} smoke_x_probe_t;
-
-typedef struct {
-    unsigned int num_probes;
-    char *units;
-    bool new_alarm;
-    bool billows_attached;
-    smoke_x_probe_t probes[4];
-} smoke_x_state_t;
 
 esp_err_t smoke_x_init();
 bool smoke_x_is_configured();

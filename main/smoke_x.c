@@ -8,6 +8,7 @@
 #include "cJSON.h"
 #include "app_lora.h"
 #include "smoke_x.h"
+#include "smoke_x_parser.h"
 
 #define SMOKE_X2_SYNC_FREQ 920000000
 #define SMOKE_X4_SYNC_FREQ 915000000
@@ -15,10 +16,6 @@
 #define SMOKE_X_RF_MAX 928000000
 #define SMOKE_X_NVS_NAMESPACE "smoke_x"
 #define SMOKE_X_NVS_CONFIG "config"
-#define NUM_COMMAS_SYNC_MSG 6
-#define NUM_COMMAS_SUCCESS_MSG 2
-#define NUM_COMMAS_X2_STATE_MSG 16
-#define NUM_COMMAS_X4_STATE_MSG 26
 #define MIN_FREE_HEAP_SIZE 32768
 #define MAX_RECORDS 1200
 #define JSON_STR_LEN 16000
@@ -70,33 +67,30 @@ static esp_err_t set_frequency(unsigned int freq) {
     }
 }
 
-static unsigned int count_commas(const char *msg, const int len) {
-    unsigned int result = 0;
-    for (int i = 0; i < len; i++) {
-        if (msg[i] == ',') result++;
-    }
-    return result;
-}
-
 static void handle_sync_msg(const char *msg, const int len) {
-    unsigned char freq_array[4];
-    // Example sync message "020001,|dhHWl,160,32,69,54,"
-    sync_received = true;
+    (void)len;
     ESP_LOGI(TAG, "Received sync message: %s", msg);
-    char *tmp = strdup(msg);
-    strtok(tmp, ",");
-    strncpy(config.device_id, strtok(NULL, ","), SMOKE_X_DEVICE_ID_LEN);
-    ESP_LOGI(TAG, "DeviceID set to: %s", config.device_id);
-    for (int i = 0; i < 4; i++) {
-        freq_array[i] = (char)atoi(strtok(NULL, ","));
-    }
-    free(tmp);
 
-    config.frequency = *(unsigned int *)freq_array;
+    smoke_x_sync_t parsed = {0};
+    if (smoke_x_parser_parse_sync(msg, &parsed) != 0) {
+        ESP_LOGE(TAG, "Failed to parse sync message: %s", msg);
+        return;
+    }
+
+    sync_received = true;
+    strncpy(config.device_id, parsed.device_id, SMOKE_X_DEVICE_ID_LEN);
+    config.frequency = parsed.frequency;
+    ESP_LOGI(TAG, "DeviceID set to: %s", config.device_id);
+
     if (config.frequency >= SMOKE_X_RF_MIN &&
         config.frequency <= SMOKE_X_RF_MAX) {
         char response[32];
-        snprintf(response, sizeof(response), "%s,SUCCESS,", config.device_id);
+        if (smoke_x_parser_format_success(config.device_id, response,
+                                          sizeof(response)) < 0) {
+            ESP_LOGE(TAG, "Failed to format sync acknowledgement");
+            sync_received = false;
+            return;
+        }
         app_lora_tx_msg_t tx_msg = {
             .msg = response,
             .repeat_interval_ms = 0,
@@ -130,22 +124,10 @@ static void update_history() {
 
 static void parse_state_msg(const char *msg, smoke_x_state_t *state) {
     char *last_units = state->units;
-    char *tmp = strdup(msg);
-    state->num_probes = config.num_probes;
-    strtok(tmp, ",");   // Not using device ID
-    strtok(NULL, ",");  // Not using unknown field
-    state->units = atoi(strtok(NULL, ",")) == 1 ? "°F" : "°C";
-    state->new_alarm = atoi(strtok(NULL, ","));
-    for (unsigned int i = 0; i < config.num_probes; i++) {
-        state->probes[i].attached = atoi(strtok(NULL, ",")) == 3 ? false : true;
-        state->probes[i].temp = atof(strtok(NULL, ",")) / 10.0;
-        state->probes[i].alarm = atoi(strtok(NULL, ","));
-        state->probes[i].max_temp = atoi(strtok(NULL, ","));
-        state->probes[i].min_temp = atoi(strtok(NULL, ","));
+    if (smoke_x_parser_parse_state(msg, config.num_probes, state) != 0) {
+        ESP_LOGE(TAG, "Failed to parse state message: %s", msg);
+        return;
     }
-    state->billows_attached = atoi(strtok(NULL, ","));
-    strtok(NULL, ",");  // Not using unknown field
-    free(tmp);
     update_history();
     if (last_units != state->units) {
         esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_DISCOVERY_REQUIRED, NULL, 0,
@@ -198,8 +180,8 @@ static esp_err_t read_config_from_nvram() {
 }
 
 static void handle_rx(const char *msg, const int len) {
-    switch (count_commas(msg, len)) {
-        case NUM_COMMAS_SYNC_MSG:
+    switch (smoke_x_parser_count_commas(msg)) {
+        case SMOKE_X_PARSER_NUM_COMMAS_SYNC:
             if (!configured && !sync_received) {
                 handle_sync_msg(msg, len);
                 esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_SYNC, NULL, 0,
@@ -211,7 +193,7 @@ static void handle_rx(const char *msg, const int len) {
                     msg);
             }
             break;
-        case NUM_COMMAS_X2_STATE_MSG:
+        case SMOKE_X_PARSER_NUM_COMMAS_X2:
             if (sync_received) {
                 if (!configured) {
                     config.num_probes = 2;
@@ -230,7 +212,7 @@ static void handle_rx(const char *msg, const int len) {
                                NULL, 0, 1000);
             }
             break;
-        case NUM_COMMAS_X4_STATE_MSG:
+        case SMOKE_X_PARSER_NUM_COMMAS_X4:
             if (sync_received) {
                 if (!configured) {
                     config.num_probes = 4;

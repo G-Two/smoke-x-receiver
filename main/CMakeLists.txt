@@ -6,6 +6,7 @@ idf_component_register(
          "app_wifi.c"
          "main.c"
          "smoke_x.c"
+         "smoke_x_parser.c"
     INCLUDE_DIRS "."
     REQUIRES driver
              esp_event
