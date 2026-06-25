@@ -105,6 +105,7 @@ int smoke_x_parser_parse_state(const char *msg, unsigned int num_probes,
     NEXT_TOK(NULL);
     out->billows_attached = atoi(t) != 0;
 
+    NEXT_TOK(NULL); /* trailing unknown field (unused) */
 #undef NEXT_TOK
 
     free(tmp);

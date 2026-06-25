@@ -7,10 +7,10 @@
       "parts": [
         {
           "path": "https://github.com/G-Two/smoke-x-receiver/releases/latest/download/smoke-x-receiver-heltec-v2.bin",
-          "offset": 4096
+          "offset": 0
         }
       ]
-    },
+    }
     {
       "chipFamily": "ESP32-S3",
       "parts": [

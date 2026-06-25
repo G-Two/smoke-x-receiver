@@ -133,7 +133,7 @@ static void tx_task(void *pvParameter) {
 
 static void rx_task(void *pvParameter) {
     int msg_len;
-    uint8_t buf[255];
+    uint8_t buf[PAYLOAD_LEN_MAX + 1];
     void (*cb)(const char *) = pvParameter;
     ESP_LOGI(TAG, "Starting LoRa Rx");
     while (1) {
