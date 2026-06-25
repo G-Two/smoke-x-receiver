@@ -163,7 +163,7 @@ static void rx_task(void *pvParameter) {
             }
 #endif
             xSemaphoreGive(xRadioSemaphore);
-            if (msg_len > 0) {
+            if (msg_len > 0 && cb) {
                 cb((char *)buf);
             }
         }
