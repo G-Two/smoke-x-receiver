@@ -32,11 +32,11 @@ jobs:
           submodules: recursive
 
       # The official ESP-IDF image is Ubuntu 22.04 whose apt-provided Node is
-      # too old for Vite 4 — pull a current LTS from NodeSource instead.
-      - name: Install Node.js
-        run: |
-          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-          apt-get install -y nodejs
+      # too old for Vite 4 — use setup-node to install a current LTS.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Install web UI dependencies
         run: make web-ui-install

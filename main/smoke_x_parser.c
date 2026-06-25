@@ -16,8 +16,10 @@ unsigned int smoke_x_parser_count_commas(const char *msg) {
 int smoke_x_parser_parse_sync(const char *msg, smoke_x_sync_t *out) {
     if (!msg || !out) return -1;
 
-    char *tmp = strdup(msg);
+    size_t msg_len = strlen(msg);
+    char *tmp = (char *)malloc(msg_len + 1);
     if (!tmp) return -1;
+    memcpy(tmp, msg, msg_len + 1);
 
     char *t;
 #define NEXT_TOK(first)           \
@@ -66,8 +68,10 @@ int smoke_x_parser_parse_state(const char *msg, unsigned int num_probes,
                                smoke_x_state_t *out) {
     if (!msg || !out || (num_probes != 2 && num_probes != 4)) return -1;
 
-    char *tmp = strdup(msg);
+    size_t msg_len = strlen(msg);
+    char *tmp = (char *)malloc(msg_len + 1);
     if (!tmp) return -1;
+    memcpy(tmp, msg, msg_len + 1);
 
     out->num_probes = num_probes;
 
