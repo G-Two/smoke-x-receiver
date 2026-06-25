@@ -30,12 +30,12 @@ const handleIconClick = (node) => {
           value.mode == 1
             ? {
                 0: 'Open',
-                3: 'WPA2 Pre-Shared Key',
-                5: 'WPA2 Enterprise',
+                3: 'WPA2/WPA3 Pre-Shared Key',
+                5: 'WPA2/WPA3 Enterprise',
               }
             : {
                 0: 'Open',
-                3: 'WPA2 Pre-Shared Key',
+                3: 'WPA2/WPA3 Pre-Shared Key',
               }
         "
         value=3
