@@ -14,7 +14,6 @@ This is an ESP32+LoRa application that receives the RF signal from a [ThermoWork
 - [MQTT Schema](#mqtt-schema)
 - [Home Assistant](#home-assistant)
 - [HTTP API](#http-api)
-- [LoRa](#lora)
 - [Development](#development)
 
 ---
@@ -88,11 +87,19 @@ An ESP32 with attached Semtech LoRa transceiver operating in the 915 MHz ISM ban
 
 ## Build
 
-### Install ESP-IDF
+Supported on Linux and macOS. The typical first-time setup is six steps. If you already have a working ESP-IDF v5.4 installation, skip to step 3.
 
-`idf.py` is not installed separately — it ships with the ESP-IDF SDK. This project targets **ESP-IDF v5.4**.
+### 1. Install host tools
 
-On macOS, a typical first-time install looks like:
+Required system-wide:
+
+- **Python 3.9+** on `$PATH` — ESP-IDF itself needs this to install in the next step
+- **Node.js + npm** — for the web UI build (any recent LTS)
+- **CMake ≥ 3.16**
+
+Use your system package manager (Homebrew, apt, dnf, etc.).
+
+### 2. Install ESP-IDF v5.4
 
 ```bash
 mkdir -p ~/esp
@@ -102,66 +109,74 @@ cd esp-idf
 ./install.sh esp32,esp32s3
 ```
 
-See the official guide for other platforms and install options:
+See the official guide for platform-specific prerequisites:
 https://docs.espressif.com/projects/esp-idf/en/release-v5.4/esp32/get-started/index.html
 
-### Prepare Environment
+### 3. Clone this repo
 
-Every new terminal session must activate ESP-IDF before using `idf.py` directly. Firmware `make` targets source it automatically.
+```bash
+git clone git@github.com:G-Two/smoke-x-receiver.git
+cd smoke-x-receiver
+```
+
+This repo includes a `Makefile` that is the recommended entry point: it sources the ESP-IDF environment, picks a compatible Python, applies the right SDKCONFIG defaults per board, and drives `idf.py` for you. (You can call `idf.py` directly — see [Using idf.py directly](#using-idfpy-directly) at the end of this section.)
+
+The Makefile looks for ESP-IDF's `export.sh` in this order:
+
+- `$IDF_PATH/export.sh` — if the `IDF_PATH` environment variable is set
+- `~/esp/esp-idf/export.sh` — the default install location (matches step 2)
+
+If you installed ESP-IDF elsewhere, either export `IDF_PATH` in your shell profile, or pass `IDF_EXPORT=/path/to/export.sh` on the `make` command line.
+
+### 4. Setup environment
+
+```bash
+make init-idf      # confirms ESP-IDF is reachable and idf.py runs
+make check-python  # confirms a supported Python is detected
+make setup         # initializes submodules and installs web UI dependencies
+```
+
+If `init-idf` fails, fix the ESP-IDF path (see step 2 or `IDF_PATH` / `IDF_EXPORT` notes in step 3) before continuing.
+
+### 5. Configure (optional)
+
+The Makefile targets will automatically set the required configuration options for Heltec v2 and v3 boards, but if further customizations are desired, enter the ESP configuration menu with:
+
+```bash
+make menuconfig-heltec-v3   # or menuconfig-heltec-v2
+```
+
+> **Note**
+> Configuration changes may be needed to support non-Heltec v2/v3 boards
+
+### 6. Build and flash
+
+Connect your ESP32 over USB and run the install target for your board:
+
+```bash
+make flash-heltec-v3   # Heltec WiFi LoRa 32 V3 (default)
+make flash-heltec-v2   # Heltec WiFi LoRa 32 V2
+```
+
+This builds the application + web assets and flashes both to the ESP32. The flash utility auto-detects the serial port; pass `PORT=/dev/cu.usbserial-XXXX` (macOS) or `PORT=/dev/ttyUSBn` (Linux) to override.
+
+To flash and immediately open the serial monitor:
+
+```bash
+make flash-monitor-heltec-v3
+```
+
+Run `make help` for the full list of targets (build, flash, monitor, clean, menuconfig, web UI helpers).
+
+### Using idf.py directly
+
+The Makefile is recommended because it sources `export.sh` and passes the right `SDKCONFIG_DEFAULTS` per board. If you'd rather invoke `idf.py` yourself:
 
 ```bash
 source ~/esp/esp-idf/export.sh   # adjust path if you cloned elsewhere
-# or verify via make:
-make init-idf
-idf.py --version
+idf.py set-target esp32s3        # use esp32 for Heltec V2
+idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.heltec-v3" build flash
 ```
-
-Then clone this repo (including its submodules) and install web UI dependencies:
-
-```bash
-git clone --recurse-submodules git@github.com:G-Two/smoke-x-receiver.git
-cd smoke-x-receiver
-make setup
-```
-
-If you have Cmake version 4 or later, you may need to enable backwards compatibility with Cmake 3.5 (the Makefile sets this automatically for firmware targets).
-
-### Configure
-
-- The default configuration for this project was written for the Heltec WiFi LoRa 32 _v3_ (based on the SX1262). If you are using this exact hardware, you can can probably skip this section. If you are running on any other hardware, want to customize the build, or if the default build doesn't work, you'll need to run menuconfig:
-
-  ```bash
-  $ idf.py menuconfig
-  ```
-
-  - **NOTE:** If you are using an SX1276 (such as the Heltec WiFi LoRa 32 _v2_), you must select the SX127x driver in the "Smoke X Receiver HW/App Config" menu and configure the SX127x SPI pin assignments
-
-    - The Heltec WiFi LoRa 32 v2 SPI assignments are:
-      - CS/NSS: 18
-      - RST: 14
-      - MISO: 19
-      - MOSI: 27
-      - SCK: 5
-
-  - Additional configuration changes may be needed to support your specific hardware or other needs
-
-### Build and Flash
-
-Connect your ESP32 and run one of:
-
-```bash
-make install-heltec-v3   # Heltec WiFi LoRa 32 V3 (default)
-make install-heltec-v2   # Heltec WiFi LoRa 32 V2
-```
-
-Or manually:
-
-```bash
-idf.py set-target esp32s3   # use esp32 for Heltec V2
-idf.py flash
-```
-
-The application and web assets will be built and written to the ESP32 flash.
 
 ---
 
@@ -292,30 +307,25 @@ _NOTE:_ X4 devices will also include additional data for probes 3 and 4
 
 PRs to fix bugs or enhance/add functionality are welcome! If you have successfully built the application, you have everything needed to modify it.
 
-### Debugging
-
-It may be helpful to monitor the ESP32 logs during initial application setup to aid in debugging. While the ESP32 is still plugged into your computer, monitor logs by running:
-
-```
-$ idf.py monitor
-```
-
 ### Main Application
 
-This application is built with the ESP-IDF v4 SDK and has external dependencies with the following LoRa modem drivers:
+This application targets ESP-IDF v5.4. The LoRa modem drivers it uses are two third-party open-source projects by [nopnop2002](https://github.com/nopnop2002), pulled in as git submodules pinned to specific commits:
 
-- [esp-idf-sx126x](https://github.com/nopnop2002/esp-idf-sx126x)
-- [esp-idf-sx127x](https://github.com/nopnop2002/esp-idf-sx127x)
+- [esp-idf-sx126x](https://github.com/nopnop2002/esp-idf-sx126x) — driver for SX1262 (used by Heltec WiFi LoRa 32 V3)
+- [esp-idf-sx127x](https://github.com/nopnop2002/esp-idf-sx127x) — driver for SX1276 (used by Heltec WiFi LoRa 32 V2)
+
+### Debugging
+
+It may be helpful to monitor the ESP32 logs during initial application setup to aid in debugging. While the ESP32 is still plugged into your computer:
+
+```bash
+make monitor-heltec-v3   # or monitor-heltec-v2
+```
 
 ### Web UI
 
 The web interface is written in Vue and is loaded onto the ESP32 flash file system as compressed static web assets which are served by the ESP32 web server. To aid in development and manual testing, the web interface can be previewed with:
 
+```bash
+make mock-web-ui
 ```
-$ ./mock_web_ui.sh
-```
-
-### TODO
-
-- Do something useful with the OLED display on Heltec LoRa 32 devices
-- Refine web UI
