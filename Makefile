@@ -253,7 +253,22 @@ web-ui-format:
 clean-web-ui:
 	rm -rf web_ui/node_modules web_ui/dist
 
+# --- Tests ---
+
+TEST_BUILD := build/test
+
+# test: Build and run host unit tests (no ESP-IDF required)
+test:
+	cmake -S test -B $(TEST_BUILD)
+	cmake --build $(TEST_BUILD)
+	ctest --test-dir $(TEST_BUILD) --verbose
+
+# clean-test: Remove host test build directory
+clean-test:
+	rm -rf $(TEST_BUILD)
+
 # --- Clean ---
 
-# clean: Remove all board build directories
-clean: clean-heltec-v2 clean-heltec-v3
+# clean: Remove all build/test artifacts
+clean: clean-heltec-v2 clean-heltec-v3 clean-test clean-web-ui
+	rm -rf build
