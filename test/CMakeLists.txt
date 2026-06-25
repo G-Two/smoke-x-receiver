@@ -19,4 +19,6 @@ target_include_directories(test_smoke_x_parser PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../main
 )
 
+target_link_libraries(test_smoke_x_parser PRIVATE m)
+
 add_test(NAME smoke_x_parser COMMAND test_smoke_x_parser)

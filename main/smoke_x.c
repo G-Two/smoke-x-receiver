@@ -67,8 +67,7 @@ static esp_err_t set_frequency(unsigned int freq) {
     }
 }
 
-static void handle_sync_msg(const char *msg, const int len) {
-    (void)len;
+static void handle_sync_msg(const char *msg) {
     ESP_LOGI(TAG, "Received sync message: %s", msg);
 
     smoke_x_sync_t parsed = {0};
@@ -123,7 +122,7 @@ static void update_history() {
 }
 
 static void parse_state_msg(const char *msg, smoke_x_state_t *state) {
-    char *last_units = state->units;
+    const char *last_units = state->units;
     if (smoke_x_parser_parse_state(msg, config.num_probes, state) != 0) {
         ESP_LOGE(TAG, "Failed to parse state message: %s", msg);
         return;
@@ -179,11 +178,11 @@ static esp_err_t read_config_from_nvram() {
     return ESP_FAIL;
 }
 
-static void handle_rx(const char *msg, const int len) {
+static void handle_rx(const char *msg) {
     switch (smoke_x_parser_count_commas(msg)) {
         case SMOKE_X_PARSER_NUM_COMMAS_SYNC:
             if (!configured && !sync_received) {
-                handle_sync_msg(msg, len);
+                handle_sync_msg(msg);
                 esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_SYNC, NULL, 0,
                                1000);
             } else {
@@ -333,7 +332,7 @@ unsigned int smoke_x_get_num_records() {
 
 char *smoke_x_get_device_id() { return config.device_id; }
 
-char *smoke_x_get_units() { return state.units; }
+const char *smoke_x_get_units() { return state.units; }
 
 esp_err_t smoke_x_start() {
     app_lora_start_rx(handle_rx);

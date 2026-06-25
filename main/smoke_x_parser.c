@@ -82,9 +82,9 @@ int smoke_x_parser_parse_state(const char *msg, unsigned int num_probes,
     NEXT_TOK(NULL); /* unknown (unused) */
 
     NEXT_TOK(NULL);
-    /* Cast away const to fit smoke_x_state_t.units; the literals have
-       static storage so callers can rely on pointer stability. */
-    out->units = (char *)(atoi(t) == 1 ? "°F" : "°C");
+    /* String literals have static storage so callers can rely on pointer
+       stability (controller uses pointer-equality to detect unit changes). */
+    out->units = atoi(t) == 1 ? "°F" : "°C";
 
     NEXT_TOK(NULL);
     out->new_alarm = atoi(t) != 0;

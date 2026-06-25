@@ -31,7 +31,7 @@ esp_err_t smoke_x_get_config(smoke_x_config_t *p_config);
 esp_err_t smoke_x_get_state(smoke_x_state_t *p_state);
 unsigned int smoke_x_get_num_records();
 char *smoke_x_get_data_json();
-char *smoke_x_get_units();
+const char *smoke_x_get_units();
 char *smoke_x_get_device_id();
 
 #endif

@@ -35,7 +35,7 @@ typedef struct {
 
 typedef struct {
     unsigned int num_probes;
-    char *units;
+    const char *units;
     bool new_alarm;
     bool billows_attached;
     smoke_x_probe_t probes[4];

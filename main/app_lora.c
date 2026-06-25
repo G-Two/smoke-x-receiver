@@ -134,7 +134,7 @@ static void tx_task(void *pvParameter) {
 static void rx_task(void *pvParameter) {
     int msg_len;
     uint8_t buf[255];
-    void (*cb)(const char *, const int) = pvParameter;
+    void (*cb)(const char *) = pvParameter;
     ESP_LOGI(TAG, "Starting LoRa Rx");
     while (1) {
         msg_len = 0;
@@ -164,7 +164,7 @@ static void rx_task(void *pvParameter) {
 #endif
             xSemaphoreGive(xRadioSemaphore);
             if (msg_len > 0) {
-                cb((char *)buf, msg_len);
+                cb((char *)buf);
             }
         }
         vTaskDelay(1);
@@ -186,7 +186,7 @@ int app_lora_start_tx(app_lora_tx_msg_t *args) {
     return ESP_OK;
 }
 
-int app_lora_start_rx(void (*cb)(const char *, const int)) {
+int app_lora_start_rx(void (*cb)(const char *)) {
     if (!xRxTask) {
         xTaskCreate(&rx_task, "app_lora_rx_task", 3072, cb, 5, &xRxTask);
         return ESP_OK;
