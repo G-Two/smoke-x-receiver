@@ -10,7 +10,7 @@
           "offset": 0
         }
       ]
-    }
+    },
     {
       "chipFamily": "ESP32-S3",
       "parts": [

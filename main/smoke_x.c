@@ -121,17 +121,18 @@ static void update_history() {
     }
 }
 
-static void parse_state_msg(const char *msg, smoke_x_state_t *state) {
+static esp_err_t parse_state_msg(const char *msg, smoke_x_state_t *state) {
     const char *last_units = state->units;
     if (smoke_x_parser_parse_state(msg, config.num_probes, state) != 0) {
         ESP_LOGE(TAG, "Failed to parse state message: %s", msg);
-        return;
+        return ESP_FAIL;
     }
     update_history();
     if (last_units != state->units) {
         esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_DISCOVERY_REQUIRED, NULL, 0,
                        1000);
     }
+    return ESP_OK;
 }
 
 static esp_err_t save_config_to_nvram() {
@@ -205,10 +206,12 @@ static void handle_rx(const char *msg) {
                         "Received data transmission from %s, saving config",
                         config.device_id);
                 }
-                parse_state_msg(msg, &state);
-                ESP_LOGI(TAG, "X2 DATA: %s", msg);
-                esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_STATE_MSG_RECEIVED,
-                               NULL, 0, 1000);
+                if (parse_state_msg(msg, &state) == ESP_OK) {
+                    ESP_LOGI(TAG, "X2 DATA: %s", msg);
+                    esp_event_post(SMOKE_X_EVENT,
+                                   SMOKE_X_EVENT_STATE_MSG_RECEIVED, NULL, 0,
+                                   1000);
+                }
             }
             break;
         case SMOKE_X_PARSER_NUM_COMMAS_X4:
@@ -224,10 +227,12 @@ static void handle_rx(const char *msg) {
                         "Received data transmission from %s, saving config",
                         config.device_id);
                 }
-                parse_state_msg(msg, &state);
-                ESP_LOGI(TAG, "X4 DATA: %s", msg);
-                esp_event_post(SMOKE_X_EVENT, SMOKE_X_EVENT_STATE_MSG_RECEIVED,
-                               NULL, 0, 1000);
+                if (parse_state_msg(msg, &state) == ESP_OK) {
+                    ESP_LOGI(TAG, "X4 DATA: %s", msg);
+                    esp_event_post(SMOKE_X_EVENT,
+                                   SMOKE_X_EVENT_STATE_MSG_RECEIVED, NULL, 0,
+                                   1000);
+                }
             }
             break;
         default:
