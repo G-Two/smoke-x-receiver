@@ -1,0 +1,82 @@
+name: Release
+
+# Builds firmware for both Heltec V2 and V3 boards, merges each into a single
+# flashable image with esptool merge_bin, and attaches the results to the
+# GitHub Release. The merged binaries are consumed by ESP Web Tools running
+# from the GitHub Pages site (docs/index.html, docs/manifest.json) so end
+# users can flash directly from a Chromium-based browser.
+#
+# Triggered automatically on tag pushes matching v*. Also exposable as a
+# manual run via the Actions tab (workflow_dispatch) so the build can be
+# smoke-tested without cutting a release.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: espressif/idf:release-v5.4
+    strategy:
+      fail-fast: false
+      matrix:
+        board: [heltec-v2, heltec-v3]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # The official ESP-IDF image is Ubuntu 22.04 whose apt-provided Node is
+      # too old for Vite 4 — pull a current LTS from NodeSource instead.
+      - name: Install Node.js
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          apt-get install -y nodejs
+
+      - name: Install web UI dependencies
+        run: make web-ui-install
+
+      # PROJECT_VER gets embedded into esp_app_desc and reported via MQTT
+      # discovery. For tag-triggered runs github.ref_name is the tag (e.g.
+      # v0.2.0); for workflow_dispatch on a branch it's the branch name.
+      - name: Build and merge firmware for ${{ matrix.board }}
+        run: make dist-${{ matrix.board }} PROJECT_VER=${{ github.ref_name }}
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.board }}
+          path: build/${{ matrix.board }}/smoke-x-receiver-${{ matrix.board }}.bin
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download firmware artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: firmware-*
+          merge-multiple: true
+
+      - name: Generate SHA256 checksums
+        working-directory: dist
+        run: sha256sum *.bin > SHA256SUMS.txt
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.bin
+            dist/SHA256SUMS.txt
+          generate_release_notes: true
+          fail_on_unmatched_files: true

@@ -1,0 +1,24 @@
+{
+  "name": "Smoke X Receiver",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        {
+          "path": "https://github.com/G-Two/smoke-x-receiver/releases/latest/download/smoke-x-receiver-heltec-v2.bin",
+          "offset": 4096
+        }
+      ]
+    },
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        {
+          "path": "https://github.com/G-Two/smoke-x-receiver/releases/latest/download/smoke-x-receiver-heltec-v3.bin",
+          "offset": 0
+        }
+      ]
+    }
+  ]
+}
