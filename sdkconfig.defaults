@@ -1,9 +1,19 @@
 #################################################################
 #
-# Modify the values below as needed for your hardware
-# prior to generating sdkconfig. You may also make changes
-# to sdkconfig directly or via menuconfig
-# For additional information, see documentation at:
+# Project-wide Kconfig baseline. ESP-IDF's "defaults" terminology is a
+# misnomer in this project: the Makefile applies these values to every
+# board build via SDKCONFIG_DEFAULTS, layered like so:
+#
+#   sdkconfig.defaults                <- this file (shared baseline)
+#   sdkconfig.defaults.heltec-v2      <- V2-specific overlay (ESP32 + SX1276)
+#   sdkconfig.defaults.heltec-v3      <- V3-specific overlay (ESP32-S3 + SX1262)
+#
+# At build time these get merged and written to the per-board sdkconfig
+# (sdkconfig.heltec-v2 or sdkconfig.heltec-v3). To customize, run
+# `make menuconfig-heltec-v2` (or v3); user changes land in those generated
+# sdkconfig files, not in this baseline.
+#
+# Kconfig reference:
 # https://docs.espressif.com/projects/esp-idf/en/release-v5.4/esp32/api-reference/kconfig.html
 #
 #################################################################

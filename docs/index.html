@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>
+      ESP32 Smoke X Receiver — Browser-flash firmware for ThermoWorks Smoke
+      X2/X4
+    </title>
+
+    <meta
+      name="description"
+      content="Open-source ESP32 + LoRa firmware that receives the RF signal from a ThermoWorks Smoke X2 or Smoke X4 base station and publishes the data to MQTT, Home Assistant, or a built-in web UI. Flash it to a Heltec WiFi LoRa 32 board directly from your browser."
+    />
+    <meta
+      name="keywords"
+      content="ThermoWorks, Smoke X2, Smoke X4, ESP32, LoRa, Heltec, WiFi LoRa 32, Home Assistant, MQTT, BBQ thermometer, smoker monitoring, firmware, browser flash"
+    />
+    <link rel="canonical" href="https://g-two.github.io/smoke-x-receiver/" />
+
+    <!-- Open Graph / social previews -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Smoke X Receiver" />
+    <meta
+      property="og:description"
+      content="Open-source ESP32 firmware that turns a Heltec WiFi LoRa 32 board into a Home-Assistant-friendly receiver for the ThermoWorks Smoke X2 / X4 wireless thermometer."
+    />
+    <meta
+      property="og:image"
+      content="https://github.com/G-Two/smoke-x-receiver/assets/7310260/20c633df-3ff2-4824-a4d0-355b7b6bf542"
+    />
+    <meta
+      property="og:url"
+      content="https://g-two.github.io/smoke-x-receiver/"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <script
+      type="module"
+      src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"
+    ></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: isDark ? "dark" : "default",
+      });
+    </script>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --fg: #1a1a1a;
+        --muted: #6a6a6a;
+        --accent: #c0392b;
+        --bg-soft: rgba(127, 127, 127, 0.08);
+        --border: rgba(127, 127, 127, 0.25);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #e6e6e6;
+          --muted: #9c9c9c;
+          --accent: #ff7a6e;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        max-width: 760px;
+        margin: 2em auto;
+        padding: 0 1.25em;
+        line-height: 1.6;
+        color: var(--fg);
+      }
+      header {
+        margin-bottom: 1.5em;
+      }
+      h1 {
+        margin: 0;
+        font-size: 2em;
+      }
+      h2 {
+        margin-top: 2em;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 0.25em;
+      }
+      .tagline {
+        color: var(--muted);
+        font-size: 1.1em;
+        margin: 0.4em 0 0;
+      }
+      .install-cta {
+        margin: 2em 0;
+        padding: 1.5em;
+        background: var(--bg-soft);
+        border-radius: 8px;
+        text-align: center;
+      }
+      .install-cta esp-web-install-button {
+        display: inline-block;
+        margin: 0.5em 0;
+      }
+      .install-button {
+        font: inherit;
+        font-size: 1.15em;
+        padding: 0.75em 1.6em;
+        border-radius: 6px;
+        border: 1px solid var(--accent);
+        background: var(--accent);
+        color: white;
+        cursor: pointer;
+      }
+      .install-button:hover {
+        opacity: 0.9;
+      }
+      .note {
+        font-size: 0.9em;
+        color: var(--muted);
+      }
+      ul.features {
+        padding-left: 1.2em;
+      }
+      ul.features li {
+        margin: 0.4em 0;
+      }
+      .screenshots {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1em;
+        margin: 1.5em 0;
+      }
+      .screenshots figure {
+        margin: 0;
+        text-align: center;
+      }
+      .screenshots img {
+        max-width: 100%;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+      }
+      .screenshots figcaption {
+        font-size: 0.85em;
+        color: var(--muted);
+        margin-top: 0.25em;
+      }
+      figure.float-right {
+        float: right;
+        margin: 0 0 1em 1.5em;
+        max-width: 200px;
+        text-align: center;
+      }
+      figure.float-right img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
+      }
+      figure.float-right figcaption {
+        font-size: 0.85em;
+        color: var(--muted);
+        margin-top: 0.25em;
+      }
+      /* On narrow screens, drop the float and center the figure as a block
+         so the text doesn't get squeezed into a tiny column. */
+      @media (max-width: 500px) {
+        figure.float-right {
+          float: none;
+          margin: 1em auto;
+          max-width: 160px;
+        }
+      }
+      .clear-float {
+        clear: both;
+      }
+      .diagram {
+        margin: 1.5em 0;
+        padding: 1em;
+        background: var(--bg-soft);
+        border-radius: 6px;
+        overflow-x: auto;
+      }
+      .diagram .mermaid {
+        display: flex;
+        justify-content: center;
+      }
+      .compat {
+        border-left: 4px solid var(--accent);
+        padding: 0.6em 1em;
+        background: var(--bg-soft);
+        margin: 1.5em 0;
+      }
+      code {
+        padding: 0.15em 0.4em;
+        background: var(--bg-soft);
+        border-radius: 3px;
+        font-family: "SF Mono", Menlo, Consolas, monospace;
+        font-size: 0.92em;
+      }
+      a {
+        color: var(--accent);
+      }
+      footer {
+        margin-top: 3em;
+        padding-top: 1em;
+        border-top: 1px solid var(--border);
+        font-size: 0.9em;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>ESP32 Receiver for ThermoWorks Smoke X2/X4</h1>
+      <p class="tagline">
+        Open-source ESP32 + LoRa firmware for the ThermoWorks Smoke X2 and Smoke
+        X4 wireless thermometers.
+      </p>
+    </header>
+
+    <section class="install-cta">
+      <strong>Plug a Heltec WiFi LoRa 32 board into USB, then:</strong>
+      <esp-web-install-button manifest="manifest.json">
+        <button class="install-button" slot="activate">
+          Install Smoke X Receiver
+        </button>
+        <span slot="unsupported">
+          Your browser doesn't support WebSerial. Use a recent Chromium-based
+          browser (Chrome, Edge, Brave, Arc) or follow the
+          <a
+            href="https://github.com/G-Two/smoke-x-receiver/blob/main/CONTRIBUTING.md"
+            >build-from-source instructions</a
+          >.
+        </span>
+        <span slot="not-allowed">
+          WebSerial access was blocked. Make sure the page is loaded over HTTPS
+          and that no other program is holding the serial port.
+        </span>
+      </esp-web-install-button>
+      <p class="note">
+        Auto-detects Heltec V2 (ESP32 + SX1276) vs V3 (ESP32-S3 + SX1262) and
+        flashes the matching firmware. Chromium-based desktop browsers only.
+        Other ESP32 boards may work but may require configuring and building
+        from source.
+      </p>
+    </section>
+
+    <h2>What it does</h2>
+    <figure class="float-right">
+      <img
+        src="https://github.com/G-Two/smoke-x-receiver/assets/7310260/57347f8d-57f6-4146-855e-b5374c836cc5"
+        alt="Original ThermoWorks Smoke X2 receiver"
+      />
+      <figcaption>Included Smoke X2 receiver</figcaption>
+    </figure>
+    <p>
+      The ThermoWorks Smoke X2 and Smoke X4 are excellent BBQ / smoker
+      thermometers — accurate, long RF range, long battery life, no app
+      required. But the included receiver only shows the current probe readings.
+      There's no way to record history, set alerts beyond the built-in alarm, or
+      integrate with home automation.
+    </p>
+    <p>
+      This project turns a low-cost
+      <a href="https://heltec.org/project/wifi-lora-32-v3/"
+        >Heltec WiFi LoRa 32</a
+      >
+      board (~$15) into an additional, network-connected receiver that runs
+      alongside the original Smoke X2/X4 receiver without interfering with it.
+      All paired receivers continue to function normally.
+    </p>
+    <p class="clear-float"></p>
+    <div class="compat">
+      <strong>Compatibility note:</strong> this firmware works with the
+      <a href="https://www.thermoworks.com/smokex2/">ThermoWorks Smoke X2</a>
+      and
+      <a href="https://www.thermoworks.com/smokex4/">Smoke X4</a>
+      only. It is
+      <strong>not compatible</strong> with the original
+      <a href="https://www.thermoworks.com/smoke/">ThermoWorks Smoke</a> or
+      <a href="https://www.thermoworks.com/signals/">ThermoWorks Signals</a>
+      products — different RF protocols.
+    </div>
+
+    <ul class="features">
+      <li>
+        <strong>Built-in web UI</strong> — connect to the device and see current
+        temperatures plus a live history graph in any browser.
+      </li>
+      <li>
+        <strong>MQTT publishing</strong> — publishes JSON status messages on
+        every base-station transmission (every 30 seconds) for use with Home
+        Assistant or any other MQTT consumer.
+      </li>
+      <li>
+        <strong>Home Assistant integration</strong> — auto-discovery via MQTT.
+        Probe temperatures, attached/detached state, alarms, and Billows target
+        temperature all show up as Home Assistant entities automatically.
+      </li>
+      <li>
+        <strong>Standalone mode</strong> — for field use without home Wi-Fi,
+        runs as its own access point.
+      </li>
+      <li>
+        <strong>HTTP API</strong> — JSON endpoint for current state and probe
+        history; consumable by any HTTP client.
+      </li>
+    </ul>
+
+    <h2>Screenshots</h2>
+    <div class="screenshots">
+      <figure>
+        <img
+          src="https://github.com/G-Two/smoke-x-receiver/assets/7310260/20c633df-3ff2-4824-a4d0-355b7b6bf542"
+          alt="Built-in web UI showing temperature history"
+        />
+        <figcaption>Built-in web UI</figcaption>
+      </figure>
+      <figure>
+        <img
+          src="https://github.com/G-Two/smoke-x-receiver/assets/7310260/7c8a6e96-fa64-48a2-a019-9a4e9b140ee6"
+          alt="Home Assistant device card"
+        />
+        <figcaption>Home Assistant view</figcaption>
+      </figure>
+      <figure>
+        <img
+          src="https://github.com/G-Two/smoke-x-receiver/assets/7310260/87173f91-347e-41b0-bbb0-df5d6ebd69d9"
+          alt="Grafana dashboard plotting cook temperature over time"
+        />
+        <figcaption>Grafana dashboard</figcaption>
+      </figure>
+    </div>
+
+    <h2>How it works</h2>
+    <p>
+      Temperature readings flow via the LoRa RF signal from the Smoke X2/X4 base
+      station to both the included receiver and to an ESP32+LoRa device. The
+      latter publishes the data over MQTT (for Home Assistant or any other
+      consumer) and serves it from a built-in web UI. All data is acquired,
+      processed, and stored locally — no cloud dependency unless you choose
+      (e.g., AWS IoT MQTT)
+    </p>
+    <div class="diagram">
+      <pre class="mermaid">
+flowchart LR
+  base <-->|LoRa RF| lora_sx12xx(SX12xx LoRa Transceiver)
+  mqclient <--> mq
+  mq <--> ha
+  web <--> browser(Any web browser)
+
+  subgraph ThermoWorks Smoke X2/X4
+    Probes --> base(Base station) -->|LoRa RF| recv(ThermoWorks Receiver)
+    Billows --> base
+  end
+
+  subgraph esp32 [ESP32+LoRa Smoke X Receiver]
+    lora_sx12xx --> smoke_x_parser(Smoke X Parser)
+    smoke_x_parser --> mqclient(MQTT client)
+    smoke_x_parser --> web(HTTP server)
+  end
+
+  subgraph mqttb [MQTT Broker]
+    mq(homeassistant topic)
+  end
+
+  subgraph Home Assistant
+    mq_int
+  end
+
+  subgraph ha_dev [HA Device for X2/X4]
+    e1(Binary sensor entities)
+    e2(Sensor entities)
+  end
+
+  subgraph mq_int [MQTT Integration]
+    ha(Auto discovery) --> e1
+    ha(Auto discovery) --> e2
+    ha_dev
+  end
+      </pre>
+    </div>
+
+    <h2>Compatible hardware</h2>
+    <p>
+      Any ESP32 board with a SPI-connected Semtech SX1276 or SX1262 LoRa
+      transceiver operating in the 915 MHz ISM band will work. The supported and
+      tested boards are:
+    </p>
+    <ul>
+      <li>
+        <a href="https://heltec.org/project/wifi-lora-32/"
+          >Heltec WiFi LoRa 32 V2</a
+        >
+        (ESP32 + SX1276)
+      </li>
+      <li>
+        <a href="https://heltec.org/project/wifi-lora-32-v3/"
+          >Heltec WiFi LoRa 32 V3</a
+        >
+        (ESP32-S3 + SX1262)
+      </li>
+    </ul>
+
+    <h2>After flashing</h2>
+    <p>
+      The receiver boots into Wi-Fi access-point mode the first time. From your
+      phone or laptop, join the network
+      <strong>Smoke X Receiver</strong> (default password
+      <code>The extra B is for BYOBB</code>), then open
+      <a href="http://192.168.4.1/wlan">http://192.168.4.1/wlan</a> to point the
+      receiver at your home Wi-Fi.
+    </p>
+    <p>Once on Wi-Fi, the device:</p>
+    <ol>
+      <li>
+        Acquires a DHCP address and requests hostname <code>smoke_x</code>.
+      </li>
+      <li>
+        Waits for a sync transmission from a Smoke X2 / X4 base station — put
+        the base into pairing mode and the receiver will pair on the first
+        burst.
+      </li>
+      <li>
+        Begins receiving temperature transmissions (every ~30 s) and publishes
+        them over MQTT (if enabled) and the web UI.
+      </li>
+    </ol>
+    <p>
+      Full setup details — Smoke X pairing flow, MQTT URI / TLS configuration,
+      Home Assistant auto-discovery setup — are in the
+      <a
+        href="https://github.com/G-Two/smoke-x-receiver#initial-application-setup"
+        >project setup guide</a
+      >.
+    </p>
+
+    <footer>
+      <p>
+        Smoke X Receiver is open-source under the MIT license. Source code,
+        issue tracker, and build-from-source instructions:
+        <a href="https://github.com/G-Two/smoke-x-receiver"
+          >github.com/G-Two/smoke-x-receiver</a
+        >.
+      </p>
+      <p>
+        Not affiliated with or endorsed by ThermoWorks. "ThermoWorks", "Smoke",
+        "Smoke X2", "Smoke X4", and "Signals" are trademarks of ThermoWorks and
+        used here for descriptive purposes.
+      </p>
+    </footer>
+  </body>
+</html>

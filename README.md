@@ -8,13 +8,14 @@ This is an ESP32+LoRa application that receives the RF signal from a [ThermoWork
 ---
 
 - [Motivation](#motivation)
-- [Requirements](#requirements)
-- [Build](#build)
+- [Hardware](#hardware)
+- [Install](#install)
 - [Initial Application Setup](#initial-application-setup)
 - [MQTT Schema](#mqtt-schema)
 - [Home Assistant](#home-assistant)
 - [HTTP API](#http-api)
-- [Development](#development)
+
+Build from source, development setup, and contribution guidelines are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
@@ -34,19 +35,20 @@ All data is acquired, processed, and stored locally as shown below:
 
 ```mermaid
 flowchart LR
-  base -->|LoRa RF| esp32
-  mqclient --> mq
-  mq --> ha
-  web --> browser(Any web browser)
+  base <-->|LoRa RF| lora_sx12xx(SX12xx LoRa Transceiver)
+  mqclient <--> mq
+  mq <--> ha
+  web <--> browser(Any web browser)
 
-  subgraph Smoke X2/X4
-    Probes --> base(Base station) -->|LoRa RF| recv(Receiver)
+  subgraph ThermoWorks Smoke X2/X4
+    Probes --> base(Base station) -->|LoRa RF| recv(ThermoWorks Receiver)
     Billows --> base
   end
 
-  subgraph esp32 [smoke-x-receiver]
-    mqclient(MQTT client)
-    web(HTTP server)
+  subgraph esp32 [ESP32+LoRa Smoke X Receiver]
+    lora_sx12xx --> smoke_x_parser(Smoke X Parser)
+    smoke_x_parser --> mqclient(MQTT client)
+    smoke_x_parser --> web(HTTP server)
   end
 
   subgraph mqttb [MQTT Broker]
@@ -63,120 +65,28 @@ flowchart LR
   end
 
   subgraph mq_int [MQTT Integration]
-    ha(Auto discovery) --> ha_dev
+    ha(Auto discovery) --> e1
+    ha(Auto discovery) --> e2
     ha_dev
   end
 ```
 
 Even if you're not a Home Assistant user, you can still use this application's built-in web interface to monitor your temperatures and watch for trends.
 
-## Requirements
-
-### Hardware
+## Hardware
 
 An ESP32 with attached Semtech LoRa transceiver operating in the 915 MHz ISM band is required. A combined ESP32+LoRa development board such as the Heltec WiFi LoRa 32 [V2](https://heltec.org/project/wifi-lora-32/) or [V3](https://heltec.org/project/wifi-lora-32-v3/) is ideal, but any ESP32 board with a SPI connected SX1276 or SX1262 should work.
 
 - Both the Heltec WiFi LoRa 32 V2(SX1276) and V3(SX1262) have been tested to work with this application
-
-### Software
-
-- [ESP-IDF SDK v5.4](https://docs.espressif.com/projects/esp-idf/en/release-v5.4/esp32/get-started/index.html) (provides `idf.py` and the ESP32 toolchain)
-- Node.js and npm (to build the web UI assets)
+- Build-tool requirements (ESP-IDF, Node.js, CMake) are listed in [CONTRIBUTING.md](CONTRIBUTING.md) and are only needed if you're building from source
 
 ---
 
-## Build
+## Install
 
-Supported on Linux and macOS. The typical first-time setup is six steps. If you already have a working ESP-IDF v5.4 installation, skip to step 3.
+The easiest way to get firmware on a supported board is the [browser-based installer](https://g-two.github.io/smoke-x-receiver/) — plug a Heltec WiFi LoRa 32 V2 or V3 into your USB port and click "Install" from a Chromium-based browser. It auto-detects the chip and flashes the matching binary from the latest GitHub release.
 
-### 1. Install host tools
-
-Required system-wide:
-
-- **Python 3.9+** on `$PATH` — ESP-IDF itself needs this to install in the next step
-- **Node.js + npm** — for the web UI build (any recent LTS)
-- **CMake ≥ 3.16**
-
-Use your system package manager (Homebrew, apt, dnf, etc.).
-
-### 2. Install ESP-IDF v5.4
-
-```bash
-mkdir -p ~/esp
-cd ~/esp
-git clone -b release/v5.4 --recursive https://github.com/espressif/esp-idf.git
-cd esp-idf
-./install.sh esp32,esp32s3
-```
-
-See the official guide for platform-specific prerequisites:
-https://docs.espressif.com/projects/esp-idf/en/release-v5.4/esp32/get-started/index.html
-
-### 3. Clone this repo
-
-```bash
-git clone git@github.com:G-Two/smoke-x-receiver.git
-cd smoke-x-receiver
-```
-
-This repo includes a `Makefile` that is the recommended entry point: it sources the ESP-IDF environment, picks a compatible Python, applies the right SDKCONFIG defaults per board, and drives `idf.py` for you. (You can call `idf.py` directly — see [Using idf.py directly](#using-idfpy-directly) at the end of this section.)
-
-The Makefile looks for ESP-IDF's `export.sh` in this order:
-
-- `$IDF_PATH/export.sh` — if the `IDF_PATH` environment variable is set
-- `~/esp/esp-idf/export.sh` — the default install location (matches step 2)
-
-If you installed ESP-IDF elsewhere, either export `IDF_PATH` in your shell profile, or pass `IDF_EXPORT=/path/to/export.sh` on the `make` command line.
-
-### 4. Setup environment
-
-```bash
-make init-idf      # confirms ESP-IDF is reachable and idf.py runs
-make check-python  # confirms a supported Python is detected
-make setup         # initializes submodules and installs web UI dependencies
-```
-
-If `init-idf` fails, fix the ESP-IDF path (see step 2 or `IDF_PATH` / `IDF_EXPORT` notes in step 3) before continuing.
-
-### 5. Configure (optional)
-
-The Makefile targets will automatically set the required configuration options for Heltec v2 and v3 boards, but if further customizations are desired, enter the ESP configuration menu with:
-
-```bash
-make menuconfig-heltec-v3   # or menuconfig-heltec-v2
-```
-
-> **Note**
-> Configuration changes may be needed to support non-Heltec v2/v3 boards
-
-### 6. Build and flash
-
-Connect your ESP32 over USB and run the install target for your board:
-
-```bash
-make flash-heltec-v3   # Heltec WiFi LoRa 32 V3 (default)
-make flash-heltec-v2   # Heltec WiFi LoRa 32 V2
-```
-
-This builds the application + web assets and flashes both to the ESP32. The flash utility auto-detects the serial port; pass `PORT=/dev/cu.usbserial-XXXX` (macOS) or `PORT=/dev/ttyUSBn` (Linux) to override.
-
-To flash and immediately open the serial monitor:
-
-```bash
-make flash-monitor-heltec-v3
-```
-
-Run `make help` for the full list of targets (build, flash, monitor, clean, menuconfig, web UI helpers).
-
-### Using idf.py directly
-
-The Makefile is recommended because it sources `export.sh` and passes the right `SDKCONFIG_DEFAULTS` per board. If you'd rather invoke `idf.py` yourself:
-
-```bash
-source ~/esp/esp-idf/export.sh   # adjust path if you cloned elsewhere
-idf.py set-target esp32s3        # use esp32 for Heltec V2
-idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.heltec-v3" build flash
-```
+If you'd rather build from source (to customize the firmware, run a development version, or use a board the installer doesn't recognize), see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
@@ -196,11 +106,11 @@ The device will default to AP mode if WLAN information has not been configured, 
 - PSK: "The extra B is for BYOBB"
 
 Connect to the ESP32's AP and use a web browser to navigate to http://192.168.4.1/wlan
-You will be presented with a self-explanatory web UI to configure the device to your home network. WPA2-PSK and WPA2-Enterprise (EAP-TTLS) are supported. Once you apply your network authentication information, the device will reset and attempt to join your home network. The ESP32 will supply a DHCP client hostname request for `smoke_x`. Once you find the ESP32 on your home network, you may proceed with the remainder of the setup process. If the ESP32 fails to join your network, it will revert to default AP mode.
+You will be presented with a self-explanatory web UI to configure the device to your home network. WPA2/WPA3-PSK and WPA2/WPA3-Enterprise (EAP-TTLS) are supported. Once you apply your network authentication information, the device will reset and attempt to join your home network. The ESP32 will supply a DHCP client hostname request for `smoke_x`. Once you find the ESP32 on your home network, you may proceed with the remainder of the setup process. If the ESP32 fails to join your network, it will revert to default AP mode.
 
 ### Smoke X Pairing
 
-The "Pairing" tab of the web UI will indicate that the device requires pairing to a Smoke X base unit. If the device is in an unpaired state, it will alternate monitoring the two sync channels (920 MHz for X2, 915 MHz for X4), and will pair with the first Smoke X sync transmission it receives. To pair, place the Smoke X base unit in sync mode which will cause it to send sync bursts every three seconds. Once the ESP32 receives and parses the burst, it will transmit a sync response on the target frequency, and the base unit will return to normal operation. At this point you can confirm in the web UI that the device is paired with a specific device ID and frequency. This is the only time the ESP32 will transmit a LoRa signal. The device may always be unpaired via the web UI. Pairing/unpairing of the ESP32 will not affect the pairing status of any other devices.
+The "Pairing" tab of the web UI will indicate that the device requires pairing to a Smoke X base unit. If the device is in an unpaired state, it will alternate monitoring the two sync channels (920 MHz for X2, 915 MHz for X4), and will pair with the first Smoke X sync transmission it receives. To pair, place the Smoke X base unit in sync mode which will cause it to send sync bursts every three seconds. Once the ESP32 receives and parses the burst, it will transmit a sync response on the target frequency, and the base unit will return to normal operation. This is the only time the ESP32 will transmit a LoRa signal. At this point you can confirm in the web UI that the device is paired with a specific device ID and frequency. The device may always be unpaired via the web UI. Pairing/unpairing of the ESP32 will not affect the pairing status of any other devices.
 
 Once paired, the status page will display a temperature graph.
 
@@ -210,7 +120,7 @@ The web UI is also used to configure the device to connect to an MQTT broker. Th
 
 ## MQTT Schema
 
-If MQTT is configured and enabled, the application will publish status messages upon receipt of an RF transmission from the Smoke X base station. The base station transmits every thirty seconds. The published message contents are:
+If MQTT is configured and enabled, the application will publish status messages upon receipt of an RF transmission from the Smoke X base station. The base station transmits every thirty seconds. The message content that this application publishes is in the following format:
 
 ```json
 {
@@ -300,32 +210,3 @@ Response:
 ```
 
 _NOTE:_ X4 devices will also include additional data for probes 3 and 4
-
----
-
-## Development
-
-PRs to fix bugs or enhance/add functionality are welcome! If you have successfully built the application, you have everything needed to modify it.
-
-### Main Application
-
-This application targets ESP-IDF v5.4. The LoRa modem drivers it uses are two third-party open-source projects by [nopnop2002](https://github.com/nopnop2002), pulled in as git submodules pinned to specific commits:
-
-- [esp-idf-sx126x](https://github.com/nopnop2002/esp-idf-sx126x) — driver for SX1262 (used by Heltec WiFi LoRa 32 V3)
-- [esp-idf-sx127x](https://github.com/nopnop2002/esp-idf-sx127x) — driver for SX1276 (used by Heltec WiFi LoRa 32 V2)
-
-### Debugging
-
-It may be helpful to monitor the ESP32 logs during initial application setup to aid in debugging. While the ESP32 is still plugged into your computer:
-
-```bash
-make monitor-heltec-v3   # or monitor-heltec-v2
-```
-
-### Web UI
-
-The web interface is written in Vue and is loaded onto the ESP32 flash file system as compressed static web assets which are served by the ESP32 web server. To aid in development and manual testing, the web interface can be previewed with:
-
-```bash
-make mock-web-ui
-```

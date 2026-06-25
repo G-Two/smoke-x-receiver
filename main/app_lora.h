@@ -61,7 +61,7 @@ typedef struct {
 } app_lora_tx_msg_t;
 
 int app_lora_start_tx(app_lora_tx_msg_t* task_arg);
-int app_lora_start_rx(void (*cb)(const char*, const int));
+int app_lora_start_rx(void (*cb)(const char*));
 int app_lora_stop_tx();
 int app_lora_stop_rx();
 int app_lora_get_params(app_lora_params_t* out_params);

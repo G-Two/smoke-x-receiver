@@ -1,5 +1,6 @@
 #include <inttypes.h>
 #include <stdlib.h>
+#include <esp_app_desc.h>
 #include <esp_log.h>
 #include <esp_system.h>
 #include <cJSON.h>
@@ -361,7 +362,8 @@ void app_mqtt_publish_discovery() {
     cJSON *device = cJSON_AddObjectToObject(root, HASS_DEVICE);
     cJSON_AddStringToObject(device, "name", "Smoke X Receiver");
     cJSON_AddStringToObject(device, "identifiers", smoke_x_get_device_id());
-    cJSON_AddStringToObject(device, "sw_version", SMOKE_X_APP_VERSION);
+    cJSON_AddStringToObject(device, "sw_version",
+                            esp_app_get_description()->version);
     cJSON_AddStringToObject(device, "model",
                             config.num_probes == 2 ? "X2" : "X4");
     cJSON_AddStringToObject(device, "manufacturer", "ThermoWorks");

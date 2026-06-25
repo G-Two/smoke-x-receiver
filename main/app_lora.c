@@ -133,16 +133,19 @@ static void tx_task(void *pvParameter) {
 
 static void rx_task(void *pvParameter) {
     int msg_len;
-    uint8_t buf[255];
-    void (*cb)(const char *, const int) = pvParameter;
+    /* One byte beyond what we expose to the radio driver, reserved for the
+       NUL terminator below. */
+    uint8_t buf[PAYLOAD_LEN_MAX + 1];
+    void (*cb)(const char *) = pvParameter;
     ESP_LOGI(TAG, "Starting LoRa Rx");
     while (1) {
         msg_len = 0;
         if (xSemaphoreTake(xRadioSemaphore, (TickType_t)10)) {
 #ifdef CONFIG_SX126x
-            msg_len = LoRaReceive(buf, sizeof(buf));
+            msg_len = LoRaReceive(buf, PAYLOAD_LEN_MAX);
             if (msg_len > 0) {
                 int8_t rssi, snr;
+                if (msg_len > PAYLOAD_LEN_MAX) msg_len = PAYLOAD_LEN_MAX;
                 buf[msg_len] = 0;
                 GetPacketStatus(&rssi, &snr);
                 ESP_LOGI(TAG, "Packet received - Size: %d RSSI: %d, SNR: %d",
@@ -152,9 +155,10 @@ static void rx_task(void *pvParameter) {
 #else
             lora_receive();
             while (lora_received()) {
-                msg_len = lora_receive_packet(buf, sizeof(buf));
+                msg_len = lora_receive_packet(buf, PAYLOAD_LEN_MAX);
                 int rssi = lora_packet_rssi();
                 float snr = lora_packet_snr();
+                if (msg_len > PAYLOAD_LEN_MAX) msg_len = PAYLOAD_LEN_MAX;
                 buf[msg_len] = 0;
                 ESP_LOGI(TAG, "Packet received - Size: %d RSSI: %d, SNR: %f",
                          msg_len, rssi, snr);
@@ -163,8 +167,8 @@ static void rx_task(void *pvParameter) {
             }
 #endif
             xSemaphoreGive(xRadioSemaphore);
-            if (msg_len > 0) {
-                cb((char *)buf, msg_len);
+            if (msg_len > 0 && cb) {
+                cb((char *)buf);
             }
         }
         vTaskDelay(1);
@@ -186,7 +190,7 @@ int app_lora_start_tx(app_lora_tx_msg_t *args) {
     return ESP_OK;
 }
 
-int app_lora_start_rx(void (*cb)(const char *, const int)) {
+int app_lora_start_rx(void (*cb)(const char *)) {
     if (!xRxTask) {
         xTaskCreate(&rx_task, "app_lora_rx_task", 3072, cb, 5, &xRxTask);
         return ESP_OK;
