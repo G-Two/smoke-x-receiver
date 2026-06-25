@@ -1,30 +1,46 @@
 **/*
 
-!clang-format
-!mock_web_ui.sh
-!pre-commit-config.yaml
-!CMakeLists.txt
+# Repo Information
+!README.md
 !LICENSE
-!Makefile
+
+# Pre-Commit Files
+!clang-format
+!pre-commit-config.yaml
 !Pipfile
 !Pipfile.lock
-!README.md
+
+# Build System Files
+!Makefile
+!CMakeLists.txt
+
+# ESP32 Configuration Files
 !partitions.csv
 !sdkconfig.defaults
-!sdkconfig.defaults.*
-
-!docs
-!docs/**
-
-!scripts
-!scripts/**
+!sdkconfig.defaults.heltec-v2
+!sdkconfig.defaults.heltec-v3
+!sdkconfig.heltec-v2
+!sdkconfig.heltec-v3
 
 # ESP32 Code
 !/main
 !/main/**
 
 # Web UI Code
+!mock_web_ui.sh
 !/web_ui
 !/web_ui/**
 /web_ui/dist
 /web_ui/node_modules
+
+# Tests
+!test
+!test/**
+
+# Miscellaneous
+!docs
+!docs/**
+!scripts
+!scripts/**
+!.github
+!.github/**

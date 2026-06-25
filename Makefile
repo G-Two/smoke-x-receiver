@@ -6,7 +6,7 @@
 #
 # First-time setup:
 #   make check-python  # verify a supported Python is detected
-#   make init-idf      # verify ESP-IDF is reachable
+#   make check-idf     # verify ESP-IDF export.sh is reachable
 #   make setup         # init submodules and install web UI deps
 #
 # Options:
@@ -51,10 +51,23 @@ COMMON_DEFAULTS := sdkconfig.defaults
 V2_DEFAULTS := $(COMMON_DEFAULTS);sdkconfig.defaults.heltec-v2
 V3_DEFAULTS := $(COMMON_DEFAULTS);sdkconfig.defaults.heltec-v3
 
+# Per-board sdkconfig files at the project root. Keeping them separate
+# prevents v2/v3 builds from clobbering each other (idf.py writes "sdkconfig"
+# at the project root by default and refuses to build if it doesn't match
+# the build dir's target).
+V2_SDKCONFIG := sdkconfig.heltec-v2
+V3_SDKCONFIG := sdkconfig.heltec-v3
+
 V2_BUILD := build/heltec-v2
 V3_BUILD := build/heltec-v3
 
 PORT_ARG := $(if $(PORT),-p $(PORT),)
+
+# Override the firmware's reported app version (embedded in esp_app_desc and
+# reported via MQTT discovery) by setting PROJECT_VER. CI passes the git tag;
+# locally, leaving it unset falls back to ESP-IDF's git-describe behavior.
+PROJECT_VER ?=
+PROJECT_VER_ARG := $(if $(PROJECT_VER),-DPROJECT_VER=$(PROJECT_VER),)
 
 define source_idf
 	$(IDF_PYTHON_PATH) . "$(IDF_EXPORT)"
@@ -89,7 +102,9 @@ check-python:
 		exit 1; \
 	fi
 
-# check-idf: Verify ESP-IDF export script exists and idf.py runs (internal)
+# check-idf: Verify ESP-IDF export.sh is reachable
+# (Deeper checks — sourcing and locating idf.py — happen in `init-idf`. This
+# target stays source-free so each firmware build only sources export.sh once.)
 check-idf: check-python
 	@test -f "$(IDF_EXPORT)" || { \
 		echo ""; \
@@ -102,26 +117,39 @@ check-idf: check-python
 		echo ""; \
 		exit 1; \
 	}
-	@$(source_idf) && command -v $(IDF_PY) >/dev/null || { \
-		echo ""; \
-		echo "Error: sourced $(IDF_EXPORT) but idf.py is still unavailable."; \
-		echo "Re-run ESP-IDF install.sh with a supported Python, e.g.:"; \
-		echo "  PATH=\"$(IDF_PYTHON_DIR):\$$PATH\" $(dir $(IDF_EXPORT))install.sh"; \
-		echo ""; \
-		exit 1; \
-	}
+	@echo "ESP-IDF: $(IDF_EXPORT)"
 
+# idf: source export.sh once, then run idf.py with the supplied SDKCONFIG /
+# defaults / build dir / args. SDKCONFIG must be passed via -D (idf.py does
+# not honor an env var for this).
+# $(1) = sdkconfig path, $(2) = sdkconfig defaults, $(3) = build dir, $(4) = idf.py args
 define idf
-	$(IDF_PYTHON_PATH) . "$(IDF_EXPORT)" && SDKCONFIG_DEFAULTS="$(1)" $(IDF_PY) -B $(2) $(3)
+	$(IDF_PYTHON_PATH) . "$(IDF_EXPORT)" && SDKCONFIG_DEFAULTS="$(2)" $(IDF_PY) -B $(3) -DSDKCONFIG=$(1) $(PROJECT_VER_ARG) $(4)
 endef
 
-.PHONY: help check-python check-idf init-idf \
+# idf_with_target: source export.sh once, run set-target if the build dir has
+# never been configured (no CMakeCache.txt), then run the requested idf.py
+# command. Combines all work into a single shell so export.sh is sourced once.
+# $(1) = build dir, $(2) = chip (esp32 / esp32s3), $(3) = sdkconfig defaults,
+# $(4) = sdkconfig path, $(5) = idf.py args (build / flash / menuconfig / ...)
+define idf_with_target
+	$(IDF_PYTHON_PATH) . "$(IDF_EXPORT)" && { \
+		if [ ! -f $(1)/CMakeCache.txt ]; then \
+			rm -rf $(1) && \
+			SDKCONFIG_DEFAULTS="$(3)" $(IDF_PY) -B $(1) -DSDKCONFIG=$(4) $(PROJECT_VER_ARG) set-target $(2); \
+		fi && \
+		SDKCONFIG_DEFAULTS="$(3)" $(IDF_PY) -B $(1) -DSDKCONFIG=$(4) $(PROJECT_VER_ARG) $(5); \
+	}
+endef
+
+.PHONY: help check-python check-idf init-idf test \
 	build-heltec-v2 build-heltec-v3 \
 	flash-heltec-v2 flash-heltec-v3 \
 	flash-monitor-heltec-v2 flash-monitor-heltec-v3 \
 	monitor-heltec-v2 monitor-heltec-v3 \
 	menuconfig-heltec-v2 menuconfig-heltec-v3 \
-	clean clean-heltec-v2 clean-heltec-v3 \
+	clean clean-heltec-v2 clean-heltec-v3 clean-test \
+	dist dist-heltec-v2 dist-heltec-v3 \
 	submodules setup \
 	mock-web-ui build-web-ui web-ui-install web-ui-lint web-ui-format clean-web-ui
 
@@ -137,7 +165,7 @@ help:
 			next \
 		} \
 		/^# [a-zA-Z0-9_.-]+: / { \
-			if ($$0 ~ /^# help: / || $$0 ~ /^# check-idf: /) next; \
+			if ($$0 ~ /^# (help|init-idf|idf|idf_with_target): /) next; \
 			target = $$0; \
 			sub(/^# /, "", target); \
 			sub(/: .*$$/, "", target); \
@@ -161,36 +189,27 @@ submodules:
 # setup: Initialize submodules and install web UI dependencies
 setup: submodules web-ui-install
 
-define ensure_clean_build_dir
-	if [ -d "$(1)" ] && [ ! -f "$(1)/CMakeCache.txt" ]; then rm -rf "$(1)"; fi
-endef
-
 # --- Heltec V2 ---
 
-$(V2_BUILD)/.target-esp32: check-idf
-	$(call ensure_clean_build_dir,$(V2_BUILD))
-	$(call idf,$(V2_DEFAULTS),$(V2_BUILD),set-target esp32)
-	@touch $@
-
 # menuconfig-heltec-v2: Open menuconfig for V2
-menuconfig-heltec-v2: $(V2_BUILD)/.target-esp32
-	$(call idf,$(V2_DEFAULTS),$(V2_BUILD),menuconfig)
+menuconfig-heltec-v2: check-idf
+	$(call idf_with_target,$(V2_BUILD),esp32,$(V2_DEFAULTS),$(V2_SDKCONFIG),menuconfig)
 
 # build-heltec-v2: Build firmware for Heltec WiFi LoRa 32 V2 (ESP32, SX1276)
-build-heltec-v2: $(V2_BUILD)/.target-esp32
-	$(call idf,$(V2_DEFAULTS),$(V2_BUILD),build)
+build-heltec-v2: check-idf
+	$(call idf_with_target,$(V2_BUILD),esp32,$(V2_DEFAULTS),$(V2_SDKCONFIG),build)
 
 # flash-heltec-v2: Build and flash Heltec WiFi LoRa 32 V2
-flash-heltec-v2: $(V2_BUILD)/.target-esp32
-	$(call idf,$(V2_DEFAULTS),$(V2_BUILD),build flash $(PORT_ARG))
+flash-heltec-v2: check-idf
+	$(call idf_with_target,$(V2_BUILD),esp32,$(V2_DEFAULTS),$(V2_SDKCONFIG),build flash $(PORT_ARG))
 
 # flash-monitor-heltec-v2: Build, flash, and open serial monitor (V2)
-flash-monitor-heltec-v2: $(V2_BUILD)/.target-esp32
-	$(call idf,$(V2_DEFAULTS),$(V2_BUILD),build flash monitor $(PORT_ARG))
+flash-monitor-heltec-v2: check-idf
+	$(call idf_with_target,$(V2_BUILD),esp32,$(V2_DEFAULTS),$(V2_SDKCONFIG),build flash monitor $(PORT_ARG))
 
 # monitor-heltec-v2: Open serial monitor for V2 build
 monitor-heltec-v2: check-idf
-	$(call idf,$(V2_DEFAULTS),$(V2_BUILD),monitor $(PORT_ARG))
+	$(call idf,$(V2_SDKCONFIG),$(V2_DEFAULTS),$(V2_BUILD),monitor $(PORT_ARG))
 
 # clean-heltec-v2: Remove V2 build directory
 clean-heltec-v2:
@@ -198,30 +217,25 @@ clean-heltec-v2:
 
 # --- Heltec V3 ---
 
-$(V3_BUILD)/.target-esp32s3: check-idf
-	$(call ensure_clean_build_dir,$(V3_BUILD))
-	$(call idf,$(V3_DEFAULTS),$(V3_BUILD),set-target esp32s3)
-	@touch $@
-
 # menuconfig-heltec-v3: Open menuconfig for V3
-menuconfig-heltec-v3: $(V3_BUILD)/.target-esp32s3
-	$(call idf,$(V3_DEFAULTS),$(V3_BUILD),menuconfig)
+menuconfig-heltec-v3: check-idf
+	$(call idf_with_target,$(V3_BUILD),esp32s3,$(V3_DEFAULTS),$(V3_SDKCONFIG),menuconfig)
 
 # build-heltec-v3: Build firmware for Heltec WiFi LoRa 32 V3 (ESP32-S3, SX1262)
-build-heltec-v3: $(V3_BUILD)/.target-esp32s3
-	$(call idf,$(V3_DEFAULTS),$(V3_BUILD),build)
+build-heltec-v3: check-idf
+	$(call idf_with_target,$(V3_BUILD),esp32s3,$(V3_DEFAULTS),$(V3_SDKCONFIG),build)
 
 # flash-heltec-v3: Build and flash Heltec WiFi LoRa 32 V3
-flash-heltec-v3: $(V3_BUILD)/.target-esp32s3
-	$(call idf,$(V3_DEFAULTS),$(V3_BUILD),build flash $(PORT_ARG))
+flash-heltec-v3: check-idf
+	$(call idf_with_target,$(V3_BUILD),esp32s3,$(V3_DEFAULTS),$(V3_SDKCONFIG),build flash $(PORT_ARG))
 
 # flash-monitor-heltec-v3: Build, flash, and open serial monitor (V3)
-flash-monitor-heltec-v3: $(V3_BUILD)/.target-esp32s3
-	$(call idf,$(V3_DEFAULTS),$(V3_BUILD),build flash monitor $(PORT_ARG))
+flash-monitor-heltec-v3: check-idf
+	$(call idf_with_target,$(V3_BUILD),esp32s3,$(V3_DEFAULTS),$(V3_SDKCONFIG),build flash monitor $(PORT_ARG))
 
 # monitor-heltec-v3: Open serial monitor for V3 build
 monitor-heltec-v3: check-idf
-	$(call idf,$(V3_DEFAULTS),$(V3_BUILD),monitor $(PORT_ARG))
+	$(call idf,$(V3_SDKCONFIG),$(V3_DEFAULTS),$(V3_BUILD),monitor $(PORT_ARG))
 
 # clean-heltec-v3: Remove V3 build directory
 clean-heltec-v3:
@@ -252,6 +266,35 @@ web-ui-format:
 # clean-web-ui: Remove web_ui/node_modules and web_ui/dist
 clean-web-ui:
 	rm -rf web_ui/node_modules web_ui/dist
+
+# --- Distribution ---
+
+# dist-heltec-v2: Build V2 and merge into a single flashable .bin
+dist-heltec-v2:
+	$(call idf_with_target,$(V2_BUILD),esp32,$(V2_DEFAULTS),$(V2_SDKCONFIG),build) && \
+		cd $(V2_BUILD) && \
+		esptool.py --chip esp32 merge_bin \
+			-o smoke-x-receiver-heltec-v2.bin \
+			--flash_mode dio --flash_size 8MB \
+			0x1000 bootloader/bootloader.bin \
+			0x8000 partition_table/partition-table.bin \
+			0x10000 smoke-x.bin \
+			0x210000 storage.bin
+
+# dist-heltec-v3: Build V3 and merge into a single flashable .bin
+dist-heltec-v3:
+	$(call idf_with_target,$(V3_BUILD),esp32s3,$(V3_DEFAULTS),$(V3_SDKCONFIG),build) && \
+		cd $(V3_BUILD) && \
+		esptool.py --chip esp32s3 merge_bin \
+			-o smoke-x-receiver-heltec-v3.bin \
+			--flash_mode dio --flash_size 8MB \
+			0x0 bootloader/bootloader.bin \
+			0x8000 partition_table/partition-table.bin \
+			0x10000 smoke-x.bin \
+			0x210000 storage.bin
+
+# dist: Build both boards and produce merged distribution binaries
+dist: dist-heltec-v2 dist-heltec-v3
 
 # --- Tests ---
 

@@ -4,7 +4,6 @@
 #include <esp_event.h>
 #include "smoke_x_types.h"
 
-#define SMOKE_X_APP_VERSION "1.2.0"
 #define SMOKE_X_PROBE_1 "probe_1"
 #define SMOKE_X_PROBE_2 "probe_2"
 #define SMOKE_X_PROBE_3 "probe_3"

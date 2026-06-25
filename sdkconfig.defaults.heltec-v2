@@ -1,4 +1,5 @@
-# Heltec WiFi LoRa 32 V2 (ESP32 + SX1276)
+# Heltec WiFi LoRa 32 V2 (ESP32 + SX1276) overlay.
+# Applied on top of sdkconfig.defaults to produce sdkconfig.heltec-v2.
 # https://heltec.org/project/wifi-lora-32/
 
 CONFIG_IDF_TARGET="esp32"

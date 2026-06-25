@@ -9,6 +9,7 @@ idf_component_register(
          "smoke_x_parser.c"
     INCLUDE_DIRS "."
     REQUIRES driver
+             esp_app_format
              esp_event
              esp_http_server
              esp_netif
