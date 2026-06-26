@@ -5,19 +5,19 @@
     {
       "chipFamily": "ESP32",
       "parts": [
-        {
-          "path": "firmware/smoke-x-receiver-heltec-v2.bin",
-          "offset": 0
-        }
+        { "path": "firmware/heltec-v2/bootloader.bin", "offset": 4096 },
+        { "path": "firmware/heltec-v2/partition-table.bin", "offset": 32768 },
+        { "path": "firmware/heltec-v2/smoke-x.bin", "offset": 65536 },
+        { "path": "firmware/heltec-v2/storage.bin", "offset": 2162688 }
       ]
     },
     {
       "chipFamily": "ESP32-S3",
       "parts": [
-        {
-          "path": "firmware/smoke-x-receiver-heltec-v3.bin",
-          "offset": 0
-        }
+        { "path": "firmware/heltec-v3/bootloader.bin", "offset": 0 },
+        { "path": "firmware/heltec-v3/partition-table.bin", "offset": 32768 },
+        { "path": "firmware/heltec-v3/smoke-x.bin", "offset": 65536 },
+        { "path": "firmware/heltec-v3/storage.bin", "offset": 2162688 }
       ]
     }
   ]

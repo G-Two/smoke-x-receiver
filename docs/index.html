@@ -226,8 +226,8 @@
           Install Smoke X Receiver
         </button>
         <span slot="unsupported">
-          Your browser doesn't support WebSerial. Use a recent Chromium-based
-          browser (Chrome, Edge, Brave, Arc) or follow the
+          Your browser doesn't support WebSerial. Use a recent desktop version
+          of Chrome, Edge, Brave, Arc, Opera, or Firefox, or follow the
           <a
             href="https://github.com/G-Two/smoke-x-receiver/blob/main/CONTRIBUTING.md"
             >build-from-source instructions</a
@@ -240,9 +240,17 @@
       </esp-web-install-button>
       <p class="note">
         Auto-detects Heltec V2 (ESP32 + SX1276) vs V3 (ESP32-S3 + SX1262) and
-        flashes the matching firmware. Chromium-based desktop browsers only.
-        Other ESP32 boards may work but may require configuring and building
-        from source.
+        flashes the matching firmware. Requires a desktop browser with WebSerial
+        support (Chrome / Edge / Brave / Arc / Opera / recent Firefox). Other
+        ESP32 boards may work but may require configuring and building from
+        source.
+      </p>
+      <p class="note">
+        <strong>Reflashing an already-configured device?</strong> When the
+        installer prompts <em>"Erase device first?"</em>, choose
+        <strong>"Don't erase"</strong> to preserve your WLAN credentials, MQTT
+        settings, and Smoke X pairing. Choose <strong>"Erase"</strong>
+        only for a clean first install or to reset everything.
       </p>
     </section>
 

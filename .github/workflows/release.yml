@@ -47,11 +47,28 @@ jobs:
       - name: Build and merge firmware for ${{ matrix.board }}
         run: make dist-${{ matrix.board }} PROJECT_VER=${{ github.ref_name }}
 
+      # Stage both the merged binary (for command-line flashing) and the
+      # individual partition files (consumed by ESP Web Tools as multi-part
+      # manifest entries — this layout preserves NVS on update).
+      - name: Stage firmware files
+        run: |
+          mkdir -p firmware-staging/${{ matrix.board }}
+          cp build/${{ matrix.board }}/smoke-x-receiver-${{ matrix.board }}.bin \
+             firmware-staging/${{ matrix.board }}/
+          cp build/${{ matrix.board }}/bootloader/bootloader.bin \
+             firmware-staging/${{ matrix.board }}/
+          cp build/${{ matrix.board }}/partition_table/partition-table.bin \
+             firmware-staging/${{ matrix.board }}/
+          cp build/${{ matrix.board }}/smoke-x.bin \
+             firmware-staging/${{ matrix.board }}/
+          cp build/${{ matrix.board }}/storage.bin \
+             firmware-staging/${{ matrix.board }}/
+
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
           name: firmware-${{ matrix.board }}
-          path: build/${{ matrix.board }}/smoke-x-receiver-${{ matrix.board }}.bin
+          path: firmware-staging
           if-no-files-found: error
 
   release:
@@ -68,16 +85,23 @@ jobs:
           pattern: firmware-*
           merge-multiple: true
 
-      - name: Generate SHA256 checksums
-        working-directory: dist
-        run: sha256sum *.bin > SHA256SUMS.txt
+      # Collect just the merged single-file binaries for the GitHub release
+      # asset list. The individual partition files live in dist/heltec-*/
+      # too but are only consumed by the web installer (via Pages), not
+      # advertised on the release page.
+      - name: Collect merged release binaries
+        run: |
+          mkdir -p release-assets
+          cp dist/heltec-*/smoke-x-receiver-*.bin release-assets/
+          cd release-assets
+          sha256sum *.bin > SHA256SUMS.txt
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/*.bin
-            dist/SHA256SUMS.txt
+            release-assets/*.bin
+            release-assets/SHA256SUMS.txt
           generate_release_notes: true
           fail_on_unmatched_files: true
 
@@ -110,9 +134,11 @@ jobs:
           pattern: firmware-*
           merge-multiple: true
 
+      # Hash everything under firmware/ so users can verify either the merged
+      # binary or any of the individual partition files post-download.
       - name: Generate SHA256 checksums
         working-directory: pages-staging/firmware
-        run: sha256sum *.bin > SHA256SUMS.txt
+        run: find . -type f -name '*.bin' | sort | xargs sha256sum > SHA256SUMS.txt
 
       - name: Stage docs into pages content
         run: cp -r docs/. pages-staging/

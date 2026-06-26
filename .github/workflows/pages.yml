@@ -37,22 +37,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Pull the latest tagged release's firmware binaries (and the checksums
-      # file) into pages-staging/firmware/. If no release exists yet (first-
-      # time bootstrap of the install page), deploy just the docs content —
-      # the install button will fail until the first tagged release runs.
-      - name: Download latest release binaries
-        env:
-          GH_TOKEN: ${{ github.token }}
+      # Fetch the currently-deployed firmware binaries from the live Pages
+      # site and re-include them in this deploy. Pages publishes are full
+      # site replacements, so we have to carry the firmware forward
+      # ourselves each time docs/ changes. If the site has never been
+      # deployed (first-time bootstrap), the curls fail and we deploy the
+      # install page without firmware — the install button is broken until
+      # release.yml runs on a tag.
+      - name: Pull current firmware from live Pages
         run: |
-          mkdir -p pages-staging/firmware
-          if gh release view >/dev/null 2>&1; then
-            gh release download \
-              --pattern '*.bin' \
-              --pattern 'SHA256SUMS.txt' \
-              --dir pages-staging/firmware
-          else
-            echo "::warning::No releases found — deploying install page without firmware. The install button will not work until release.yml runs on a tag."
+          BASE="https://g-two.github.io/smoke-x-receiver/firmware"
+          MISSING=0
+          for board in heltec-v2 heltec-v3; do
+            mkdir -p "pages-staging/firmware/$board"
+            for file in bootloader.bin partition-table.bin smoke-x.bin storage.bin "smoke-x-receiver-$board.bin"; do
+              if ! curl -sfL -o "pages-staging/firmware/$board/$file" "$BASE/$board/$file"; then
+                echo "::warning::Failed to fetch $board/$file from $BASE — install page may be missing firmware until next release"
+                MISSING=$((MISSING + 1))
+              fi
+            done
+          done
+          if [ "$MISSING" -gt 0 ]; then
+            echo "::warning::$MISSING firmware files were not fetched. If this is the first deploy, ignore — they'll appear once release.yml runs on a tag."
+          fi
+          # Re-hash whatever we ended up with.
+          if compgen -G "pages-staging/firmware/*/*.bin" >/dev/null; then
+            (cd pages-staging/firmware && find . -type f -name '*.bin' | sort | xargs sha256sum > SHA256SUMS.txt)
           fi
 
       - name: Stage docs into pages content
