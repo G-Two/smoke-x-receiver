@@ -1,0 +1,68 @@
+name: Deploy install page
+
+# Republishes the install page (docs/index.html, manifest, etc.) to GitHub
+# Pages without requiring a new firmware release. Triggers on changes under
+# docs/ on the main branch and on manual dispatch.
+#
+# Firmware binaries themselves are pulled from the most recent GitHub
+# Release — those are produced by release.yml on tag pushes. This workflow
+# re-stages the latest tagged binaries alongside the (possibly updated)
+# docs/ content so the install page stays current as you iterate on the UI.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Serialize Pages deploys across this workflow and release.yml's deploy-pages
+# job so two simultaneous deploys don't race against each other.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pull the latest tagged release's firmware binaries (and the checksums
+      # file) into pages-staging/firmware/. If no release exists yet (first-
+      # time bootstrap of the install page), deploy just the docs content —
+      # the install button will fail until the first tagged release runs.
+      - name: Download latest release binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p pages-staging/firmware
+          if gh release view >/dev/null 2>&1; then
+            gh release download \
+              --pattern '*.bin' \
+              --pattern 'SHA256SUMS.txt' \
+              --dir pages-staging/firmware
+          else
+            echo "::warning::No releases found — deploying install page without firmware. The install button will not work until release.yml runs on a tag."
+          fi
+
+      - name: Stage docs into pages content
+        run: cp -r docs/. pages-staging/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages-staging
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
