@@ -142,6 +142,9 @@ static esp_err_t save_config_to_nvram() {
     if (!err) {
         err = nvs_set_blob(h_nvs, SMOKE_X_NVS_CONFIG, &config,
                            sizeof(smoke_x_config_t));
+        if (!err) {
+            err = nvs_commit(h_nvs);
+        }
         nvs_close(h_nvs);
     }
     return err;
@@ -161,7 +164,8 @@ static esp_err_t read_config_from_nvram() {
         if (ESP_OK == err) {
             if ((config.frequency >= SMOKE_X_RF_MIN &&
                  config.frequency <= SMOKE_X_RF_MAX) &&
-                strlen(config.device_id) > 0) {
+                strlen(config.device_id) > 0 &&
+                (config.num_probes == 2 || config.num_probes == 4)) {
                 ESP_LOGI(TAG, "Device is paired to %s at %d MHz",
                          config.device_id, config.frequency);
                 configured = true;
