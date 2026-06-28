@@ -150,6 +150,7 @@ endef
 	menuconfig-heltec-v2 menuconfig-heltec-v3 \
 	clean clean-heltec-v2 clean-heltec-v3 clean-test \
 	dist dist-heltec-v2 dist-heltec-v3 \
+	serve-pages \
 	submodules setup \
 	mock-web-ui build-web-ui web-ui-install web-ui-lint web-ui-format clean-web-ui
 
@@ -295,6 +296,45 @@ dist-heltec-v3:
 
 # dist: Build both boards and produce merged distribution binaries
 dist: dist-heltec-v2 dist-heltec-v3
+
+# --- Install page (local preview) ---
+
+# Port for the local preview server. Override with `make serve-pages HTTP_PORT=...`.
+HTTP_PORT ?= 8000
+
+# Where docs/ + firmware/ get staged for the local preview. Mirrors the
+# layout that release.yml + pages.yml deploy to GitHub Pages.
+PAGES_STAGE := build/pages
+
+# serve-pages: Stage docs and firmware locally and serve the install page
+# at http://localhost:$(HTTP_PORT) for end-to-end install + Improv testing.
+# Run `make dist-heltec-vN` first to produce the binaries; missing boards
+# are skipped with a warning (you can still test the install button for
+# whichever board you did build).
+serve-pages:
+	@rm -rf $(PAGES_STAGE)
+	@mkdir -p $(PAGES_STAGE)/firmware/heltec-v2 $(PAGES_STAGE)/firmware/heltec-v3
+	@cp -r docs/. $(PAGES_STAGE)/
+	@for board in heltec-v2 heltec-v3; do \
+		for src in \
+			build/$$board/bootloader/bootloader.bin \
+			build/$$board/partition_table/partition-table.bin \
+			build/$$board/smoke-x.bin \
+			build/$$board/storage.bin \
+			build/$$board/smoke-x-receiver-$$board.bin; do \
+			if [ -f "$$src" ]; then \
+				cp "$$src" "$(PAGES_STAGE)/firmware/$$board/"; \
+			else \
+				echo "  note: $$src not found (run 'make dist-$$board' to include this board)"; \
+			fi; \
+		done; \
+	done
+	@(cd $(PAGES_STAGE)/firmware && find . -type f -name '*.bin' | sort | xargs sha256sum > SHA256SUMS.txt 2>/dev/null || true)
+	@echo ""
+	@echo "Serving install page at http://localhost:$(HTTP_PORT)/"
+	@echo "WebSerial requires a Chromium-based browser or recent Firefox."
+	@echo "Press Ctrl+C to stop."
+	@cd $(PAGES_STAGE) && python3 -m http.server $(HTTP_PORT)
 
 # --- Tests ---
 
