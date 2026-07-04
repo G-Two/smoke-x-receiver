@@ -64,21 +64,24 @@ make setup         # initializes submodules and installs web UI dependencies
 
 ### 5. Configure (optional)
 
-The Makefile targets will automatically set the required configuration options for Heltec v2 and v3 boards, but if further customizations are desired, enter the ESP configuration menu with:
+The Makefile targets will automatically set the required configuration options for Heltec V2 and V3 boards, but if further customizations are desired, enter the ESP configuration menu with:
 
 ```bash
 make menuconfig-heltec-v3   # or menuconfig-heltec-v2
 ```
 
 > **Note**
-> Configuration changes may be needed to support non-Heltec v2/v3 boards
+> The Heltec WiFi LoRa 32 V4 shares the same ESP32-S3 chip, SX1262 transceiver, and GPIO pinout as the V3. It is untested but expected to work — use the `heltec-v3` Makefile targets.
+
+> **Note**
+> Configuration changes may be needed to support non-Heltec V2/V3 boards
 
 ### 6. Build and flash
 
 Connect your ESP32 over USB and run the install target for your board:
 
 ```bash
-make flash-heltec-v3   # Heltec WiFi LoRa 32 V3 (default)
+make flash-heltec-v3   # Heltec WiFi LoRa 32 V3 (and untested V4)
 make flash-heltec-v2   # Heltec WiFi LoRa 32 V2
 ```
 

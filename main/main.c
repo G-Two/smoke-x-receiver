@@ -4,6 +4,7 @@
 #include <esp_event.h>
 #include <esp_log.h>
 #include <nvs_flash.h>
+#include "app_improv.h"
 #include "app_mqtt.h"
 #include "app_web_ui.h"
 #include "app_wifi.h"
@@ -85,6 +86,7 @@ void app_main() {
     smoke_x_start();
     app_wifi_init();
     app_web_ui_start();
+    app_improv_start();
 
 #if CONFIG_HELTEC_OLED
     if (app_display_init() == ESP_OK) {
