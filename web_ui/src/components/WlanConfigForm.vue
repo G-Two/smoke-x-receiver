@@ -80,6 +80,7 @@ import * as axios from "axios"
 import { getNode } from "@formkit/core"
 import Loading from "vue-loading-overlay"
 import "vue-loading-overlay/dist/css/index.css"
+import { notify } from "../toasts"
 
 export default {
   name: "WlanConfigForm",
@@ -103,18 +104,20 @@ export default {
         getNode("password").input(res.data.password)
         this.isLoading = false
       })
-      .catch((error) => {
-        console.log(error)
+      .catch(() => {
+        this.isLoading = false
+        notify("Failed to load WLAN settings", "error")
       })
   },
   methods: {
     async sendToServer(fields) {
-      if (confirm("Commit these settings to NVRAM?")) {
-        fields.authType=parseInt(fields.authType)
-        fields.mode=parseInt(fields.mode)
-        axios.post("wlan-config", fields).catch((error) => {
-          console.log(error)
-        })
+      fields.authType = parseInt(fields.authType)
+      fields.mode = parseInt(fields.mode)
+      try {
+        await axios.post("wlan-config", fields)
+        notify("WLAN settings saved")
+      } catch (error) {
+        notify("Failed to save WLAN settings", "error")
       }
     },
   },

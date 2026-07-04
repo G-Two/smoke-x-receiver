@@ -140,6 +140,7 @@ import * as axios from "axios"
 import { getNode } from "@formkit/core"
 import Loading from "vue-loading-overlay"
 import "vue-loading-overlay/dist/css/index.css"
+import { notify } from "../toasts"
 
 export default {
   name: "MqttConfigForm",
@@ -173,16 +174,18 @@ export default {
         getNode("state_topic").input(res.data.state_topic)
         this.isLoading = false
       })
-      .catch((error) => {
-        console.log(error)
+      .catch(() => {
+        this.isLoading = false
+        notify("Failed to load MQTT settings", "error")
       })
   },
   methods: {
     async sendToServer(fields) {
-      if (confirm("Commit these settings to NVRAM?")) {
-        axios.post("mqtt-config", fields).catch((error) => {
-          console.log(error)
-        })
+      try {
+        await axios.post("mqtt-config", fields)
+        notify("MQTT settings saved")
+      } catch (error) {
+        notify("Failed to save MQTT settings", "error")
       }
     },
   },

@@ -1,5 +1,7 @@
 <script setup>
 import { preference, cyclePreference } from "./theme"
+import ToastHost from "./components/ToastHost.vue"
+import ConfirmDialog from "./components/ConfirmDialog.vue"
 
 const ICONS = { auto: "◐", light: "☀", dark: "☾" }
 </script>
@@ -24,6 +26,8 @@ const ICONS = { auto: "◐", light: "☀", dark: "☾" }
       </div>
     </div>
     <router-view />
+    <ToastHost />
+    <ConfirmDialog />
   </div>
 </template>
 

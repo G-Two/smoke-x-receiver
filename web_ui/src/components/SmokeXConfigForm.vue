@@ -54,6 +54,8 @@ import * as axios from "axios"
 import Loading from "vue-loading-overlay"
 import "vue-loading-overlay/dist/css/index.css"
 import Img1 from "/src/sync_button.png"
+import { notify } from "../toasts"
+import { confirm } from "../confirm"
 
 export default {
   name: "SmokeXConfigForm",
@@ -78,20 +80,23 @@ export default {
     clearInterval(this.timer)
   },
   methods: {
-    unpair() {
-      var json = {
-        command: "unpair",
+    async unpair() {
+      const ok = await confirm(
+        "Unpair from this Smoke X base station? Other paired receivers are unaffected.",
+        { confirmLabel: "Unpair", danger: true }
+      )
+      if (!ok) return
+      try {
+        await axios.post("cmd", { command: "unpair" })
+        notify("Unpaired from base station")
+      } catch (error) {
+        notify("Failed to unpair", "error")
       }
-      if (confirm("Do you really want to unpair?")) {
-        axios.post("cmd", json).catch((error) => {
-          console.log(error)
-        })
-        this.isPaired = false
-        this.currentFrequency = null
-        this.deviceId = null
-        this.deviceModel = null
-        this.timer = setInterval(this.getData, 2000)
-      }
+      this.isPaired = false
+      this.currentFrequency = null
+      this.deviceId = null
+      this.deviceModel = null
+      this.timer = setInterval(this.getData, 2000)
     },
     async getData() {
       axios
