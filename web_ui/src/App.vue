@@ -192,12 +192,14 @@ onMounted(startDevicePolling)
 }
 
 .brand {
-  font-family: "Avenir Next Condensed", "Futura", "Trebuchet MS", system-ui,
-    sans-serif;
-  font-weight: 800;
-  font-size: 1.15em;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  /* Tall, narrow wordmark echoing ThermoWorks' condensed branding. These are
+     all standard system condensed faces (plus Oswald if the user happens to
+     have it), so no webfont fetch is needed on the firmware-served build. */
+  font-family: "Avenir Next Condensed", "Roboto Condensed", "Arial Narrow",
+    "Helvetica Neue", "Oswald", sans-serif;
+  font-stretch: condensed;
+  font-weight: 400;
+  font-size: 1.35em;
   color: var(--brand);
   text-decoration: none;
   white-space: nowrap;
@@ -222,13 +224,13 @@ onMounted(startDevicePolling)
   color: var(--header-muted);
 }
 .pill-paired {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
+  background: var(--pill-ok-bg);
+  color: var(--pill-ok-fg);
+  border-color: var(--pill-ok-bg);
 }
 .pill-offline {
-  background: var(--alarm-high-bg);
-  color: var(--alarm-high-fg);
+  background: var(--pill-off-bg);
+  color: var(--pill-off-fg);
   border-color: transparent;
 }
 

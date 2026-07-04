@@ -186,13 +186,15 @@ export default {
 </script>
 
 <style>
-#ca_cert {
-  font-family: "Courier New", Courier, monospace;
+/* PEM certificates and keys are far easier to read and paste in a fixed-width
+   terminal font. Applies to all three cert/key textareas so they match (the
+   CA, client cert, and client key boxes were previously inconsistent). */
+#mqtt-config-form textarea {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono",
+    "Courier New", monospace;
+  font-size: 0.85em;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-size: medium;
-  font-weight: bold;
-  margin: 0;
-  text-align: justify;
 }
 </style>
