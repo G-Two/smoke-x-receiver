@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint --ext .js,.vue --ignore-path .gitignore --fix src",
-    "format": "prettier .  --write"
+    "format": "prettier .  --write",
+    "icons": "node icons/generate.mjs"
   },
   "dependencies": {
     "@formkit/addons": "^2.1.0",
@@ -28,6 +29,7 @@
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-vue": "^9.12.0",
     "prettier": "^2.8.8",
+    "sharp": "^0.33.5",
     "terser": "^5.17.3",
     "vite": "^4.3.2",
     "vite-plugin-compression": "^0.5.1"

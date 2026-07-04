@@ -17,7 +17,9 @@ export default defineConfig({
   plugins: [
     vue(),
     viteCompression({
-      filter: "/.(js|css|html|ico|png)$/i",
+      // The firmware only serves pre-gzipped (.gz) files, so every asset it
+      // needs to serve must be compressed here — including the PWA manifest.
+      filter: "/.(js|css|html|ico|png|webmanifest)$/i",
       threshold: 1,
     }),
   ],
