@@ -113,7 +113,6 @@ static void handle_wifi_settings(const improv_rpc_t *rpc) {
         snprintf(url, sizeof(url), "http://%s/", ip_str);
         send_rpc_result_url(IMPROV_CMD_WIFI_SETTINGS, url);
         send_state(IMPROV_STATE_PROVISIONED);
-        /* PROVISIONED is the per-session "we just succeeded" signal. After
         /* PROVISIONED is only emitted as an immediate post-success signal.
          * Reset our stored state to AUTHORIZED so a later dialog reopen doesn't
          * see a stale PROVISIONED without the accompanying URL. */

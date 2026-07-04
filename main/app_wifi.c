@@ -395,9 +395,9 @@ esp_err_t app_wifi_try_connect(const char *ssid, const char *password,
 
     if (!wifi_event_group) {
         wifi_event_group = xEventGroupCreate();
+        if (!wifi_event_group) return ESP_ERR_NO_MEM;
     }
     xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
-
     sta_netif = esp_netif_create_default_wifi_sta();
     if (!sta_netif) return ESP_FAIL;
 

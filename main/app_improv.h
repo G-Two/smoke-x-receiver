@@ -7,8 +7,8 @@
  * hands off received credentials to app_wifi for a hot-connect.
  *
  * Coexists with ESP_LOG output on UART0; Improv frames are well-framed
- * binary packets with magic bytes, so log lines interleaved between
- * frames are harmless. Frames are written atomically.
+ * binary packets with magic bytes, so log lines between frames are harmless.
+ * Note: ESP_LOG output may still interleave bytes with our writes on some targets.
  */
 
 #include <esp_err.h>

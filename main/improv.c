@@ -108,6 +108,7 @@ bool improv_parse_byte(improv_parser_t *p, uint8_t b, improv_rpc_t *out) {
 static size_t improv_build_frame(uint8_t *out_buf, size_t out_buf_len,
                                  uint8_t type, const uint8_t *payload,
                                  uint8_t payload_len) {
+    if (payload_len > IMPROV_MAX_PAYLOAD) return 0;
     size_t total = 6 + 1 + 1 + 1 + payload_len + 1;
     if (out_buf_len < total) return 0;
     memcpy(out_buf, IMPROV_MAGIC, 6);
