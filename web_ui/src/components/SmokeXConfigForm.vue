@@ -6,7 +6,12 @@
       :disabled="!isPaired"
       @submit="unpair"
     >
-      <loading v-model:active="isLoading" />
+      <loading
+        v-model:active="isLoading"
+        color="var(--accent)"
+        background-color="var(--bg)"
+        :opacity="0.9"
+      />
       <div class="status">
         <b>Status:</b>
         {{ isLoading ? "---" : isPaired ? "PAIRED" : "NOT PAIRED" }} <br />

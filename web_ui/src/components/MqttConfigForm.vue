@@ -13,7 +13,12 @@ const handleIconClick = (node) => {
 
 <template>
   <div id="mqtt-config-form">
-    <loading v-model:active="isLoading" />
+    <loading
+      v-model:active="isLoading"
+      color="var(--accent)"
+      background-color="var(--bg)"
+      :opacity="0.9"
+    />
     <FormKit type="form" @submit="sendToServer">
       <FormKit
         id="enabled"

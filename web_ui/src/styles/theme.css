@@ -1,0 +1,99 @@
+/* Design tokens. Light is the default; [data-theme="dark"] overrides them.
+   theme.js always resolves the preference to an explicit data-theme value, so
+   only these two blocks are needed (no duplicated prefers-color-scheme block). */
+:root {
+  color-scheme: light;
+
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --text: #2c3e50;
+  --text-muted: #6b7889;
+  --border: rgba(0, 0, 0, 0.08);
+  --shadow: rgba(0, 0, 0, 0.08);
+  --accent: #42b983;
+  --code-bg: rgba(0, 100, 250, 0.08);
+
+  --alarm-high-fg: rgb(200, 75, 75);
+  --alarm-high-bg: rgba(200, 75, 75, 0.08);
+  --alarm-low-fg: rgb(75, 130, 200);
+  --alarm-low-bg: rgba(75, 130, 200, 0.08);
+
+  --chart-tick: #667;
+  --chart-grid: rgba(0, 0, 0, 0.1);
+  --chart-legend: #2c3e50;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #16181d;
+  --surface: #21242b;
+  --text: #e6e8ec;
+  --text-muted: #99a3b1;
+  --border: rgba(255, 255, 255, 0.1);
+  --shadow: rgba(0, 0, 0, 0.5);
+  --accent: #4ecb96;
+  --code-bg: rgba(90, 150, 255, 0.12);
+
+  --alarm-high-fg: rgb(240, 130, 130);
+  --alarm-high-bg: rgba(220, 90, 90, 0.18);
+  --alarm-low-fg: rgb(130, 180, 240);
+  --alarm-low-bg: rgba(90, 150, 220, 0.18);
+
+  --chart-tick: #99a3b1;
+  --chart-grid: rgba(255, 255, 255, 0.12);
+  --chart-legend: #e6e8ec;
+
+  /* FormKit Genesis theme overrides (imported before this file, so we win). */
+  --fk-bg-input: #2b2f37;
+  --fk-color-input: var(--text);
+  --fk-color-border: rgba(255, 255, 255, 0.25);
+  --fk-color-placeholder: #8a94a2;
+  --fk-color-help: rgba(255, 255, 255, 0.6);
+  --fk-color-icon: rgba(255, 255, 255, 0.8);
+  --fk-color-icon-minor: rgba(255, 255, 255, 0.55);
+  --fk-bg-disabled: rgba(255, 255, 255, 0.06);
+  --fk-color-disabled: rgba(255, 255, 255, 0.3);
+  --fk-color-primary: #3b8bff;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+form {
+  width: calc(100% - 2em);
+  max-width: 480px;
+  box-sizing: border-box;
+  padding: 2em;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 0 1em var(--shadow);
+  border-radius: 0.5em;
+  margin: 1em auto;
+}
+
+form pre {
+  background-color: var(--code-bg);
+  padding: 1em;
+}
+
+h3,
+h4 {
+  display: block;
+  min-width: 100%;
+  width: 100%;
+  text-align: center;
+  color: var(--text);
+}
+
+/* FormKit label/legend legibility in dark mode */
+[data-theme="dark"] .formkit-label,
+[data-theme="dark"] .formkit-legend {
+  color: var(--text);
+}

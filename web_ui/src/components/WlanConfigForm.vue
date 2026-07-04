@@ -7,7 +7,12 @@ const handleIconClick = (node) => {
 
 <template>
   <div id="wlan-config-form">
-    <loading v-model:active="isLoading" />
+    <loading
+      v-model:active="isLoading"
+      color="var(--accent)"
+      background-color="var(--bg)"
+      :opacity="0.9"
+    />
     <FormKit v-slot="{ value }" type="form" @submit="sendToServer">
       <FormKit
         id="mode"

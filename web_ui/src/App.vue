@@ -1,63 +1,68 @@
+<script setup>
+import { preference, cyclePreference } from "./theme"
+
+const ICONS = { auto: "◐", light: "☀", dark: "☾" }
+</script>
+
 <template>
   <div>
     <div id="nav">
       <h2>Smoke X Receiver</h2>
-      <router-link to="/"> Status </router-link> |
-      <router-link to="/wlan"> WLAN </router-link> |
-      <router-link to="/pairing"> Pairing </router-link> |
-      <router-link to="/mqtt"> MQTT </router-link>
+      <div class="nav-links">
+        <router-link to="/"> Status </router-link> |
+        <router-link to="/wlan"> WLAN </router-link> |
+        <router-link to="/pairing"> Pairing </router-link> |
+        <router-link to="/mqtt"> MQTT </router-link>
+        <button
+          class="theme-toggle"
+          type="button"
+          :title="`Theme: ${preference} (click to change)`"
+          @click="cyclePreference"
+        >
+          {{ ICONS[preference] }}
+        </button>
+      </div>
     </div>
     <router-view />
   </div>
 </template>
 
 <style>
-form {
-  width: calc(100% - 2em);
-  max-width: 480px;
-  box-sizing: border-box;
-  padding: 2em;
-  box-shadow: 0 0 1em rgba(0, 0, 0, 0.1);
-  border-radius: 0.5em;
-  margin: 1em auto;
-}
-
-form pre {
-  background-color: rgba(0, 100, 250, 0.1);
-  padding: 1em;
-}
-
-h3 {
-  display: block;
-  min-width: 100%;
-  width: 100%;
-  text-align: center;
-}
-
-h4 {
-  display: block;
-  min-width: 100%;
-  width: 100%;
-  text-align: center;
-}
-
 #nav {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  color: #2c3e50;
   text-align: center;
   font-weight: bold;
-  color: #2c3e50;
+  color: var(--text);
+  padding-top: 0.5em;
 }
 
 #nav a {
   font-weight: bold;
-  color: #2c3e50;
+  color: var(--text);
   text-decoration: none;
 }
 
 #nav a.router-link-exact-active {
-  color: #42b983;
+  color: var(--accent);
+}
+
+.nav-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.theme-toggle {
+  margin-left: 0.5em;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 0.4em;
+  width: 2em;
+  height: 2em;
+  cursor: pointer;
+  font-size: 1em;
+  line-height: 1;
 }
 </style>
