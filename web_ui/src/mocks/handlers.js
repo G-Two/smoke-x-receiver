@@ -1,105 +1,88 @@
 import { rest } from "msw"
 
+// --- Mock data: a ~4 hour low-and-slow BBQ smoke ----------------------------
+// The base station transmits every 30s, so 4 hours ≈ 480 samples. Probe 4 is
+// the smoker/pit (holding ~250°F); probes 1-3 are beef, pork, and chicken.
+const SAMPLES = 480
+
+const round1 = (v) => Math.round(v * 10) / 10
+
+// Deterministic "sensor noise" so the curves look organic but stay stable
+// across reloads (nicer for screenshots than Math.random).
+const noise = (i, amp, freq = 0.6, phase = 0) =>
+  amp * (0.6 * Math.sin(i * freq + phase) + 0.4 * Math.sin(i * freq * 2.7 + phase))
+
+// Meat: exponential rise toward a stall temperature, then a slow creep upward.
+function meatCurve({ start, stall, creepEnd, riseTau, stallAt = 0.45 }) {
+  const out = []
+  for (let i = 0; i < SAMPLES; i++) {
+    const f = i / (SAMPLES - 1)
+    const rise = start + (stall - start) * (1 - Math.exp(-i / riseTau))
+    const creep =
+      f > stallAt ? ((f - stallAt) / (1 - stallAt)) * (creepEnd - stall) : 0
+    out.push(round1(rise + creep + noise(i, 0.4)))
+  }
+  return out
+}
+
+// Pit: warms up, then holds near the target with wander and a few lid-open dips.
+function pitCurve({ target = 250, warmupSamples = 24, dips = [130, 250, 370] }) {
+  const out = []
+  for (let i = 0; i < SAMPLES; i++) {
+    const base =
+      i < warmupSamples ? 205 + (target - 205) * (i / warmupSamples) : target
+    let dip = 0
+    for (const d of dips) {
+      if (i >= d && i < d + 12) dip -= 32 * Math.sin((Math.PI * (i - d)) / 12)
+    }
+    out.push(round1(base + noise(i, 6, 0.2) + noise(i, 2.5, 0.85, 1.1) + dip))
+  }
+  return out
+}
+
+const probe = (history, alarm_min, alarm_max) => ({
+  current_temp: history[history.length - 1],
+  alarm_min,
+  alarm_max,
+  history,
+})
+
+function buildSmokeData() {
+  // Beef (brisket) and pork (shoulder) are mid-cook and stalled; chicken has
+  // just reached its 165°F target (so it trips the high alarm); pit holds ~250.
+  const beef = meatCurve({ start: 39, stall: 150, creepEnd: 158, riseTau: 72 })
+  const pork = meatCurve({ start: 41, stall: 158, creepEnd: 168, riseTau: 84 })
+  const chicken = meatCurve({
+    start: 40,
+    stall: 160,
+    creepEnd: 166,
+    riseTau: 56,
+    stallAt: 0.6,
+  })
+  const pit = pitCurve({ target: 250 })
+  return {
+    probe_1: probe(beef, 32, 203), // beef (brisket) — target 203°F
+    probe_2: probe(pork, 32, 203), // pork (shoulder) — target 203°F
+    probe_3: probe(chicken, 32, 165), // chicken — target 165°F
+    probe_4: probe(pit, 225, 275), // smoker/pit — holding ~250°F
+    billows: true,
+  }
+}
+
 export default [
-  rest.get("/status", (req, res, ctx) => {
-    return res(
-      ctx.delay(500),
-      ctx.json({
-        wifi: 1,
-        paired: true,
-        num_probes: 4,
-        probe1: 160.4,
-        probe2: 162.4,
-        probe3: 163.4,
-        probe4: 164.4,
-        billows: true,
-        billows_target: 225,
-      })
-    )
-  }),
   rest.get("/data", (req, res, ctx) => {
-    return res(
-      ctx.delay(500),
-      ctx.json({
-        probe_1: {
-          current_temp: 84,
-          alarm_max: 120,
-          alarm_min: 35,
-          history: [
-            70.1, 70.1, 70.1, 70.1, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.4,
-            70.5, 70.5, 70.5, 70.6, 70.7, 70.8, 70.9, 70.9, 70.9, 71, 71, 70.9,
-            70.9, 70.8, 70.7, 70.7, 70.7, 70.7, 70.6, 70.6, 70.6, 70.5, 70.5,
-            70.5, 70.4, 70.5, 70.5, 70.4, 70.4, 70.4, 70.4, 70.4, 70.4, 70.4,
-            70.4, 70.4, 70.4, 70.4, 70.4, 70.3, 70.3, 70.3, 70.2, 70.3, 70.3,
-            70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2,
-            70.2, 70.2, 70.2, 70.2, 71.3, 72.6, 70, 64.2, 71.7, 72, 72, 72.1,
-            72.5, 72.7, 73.2, 73.4, 74.2, 74, 74.8, 74.9, 75.7, 76.3, 76.7,
-            77.4, 77.8, 78.7, 79.6, 79.8, 80.3, 80.9, 81.5, 82, 82.8, 83.3, 84,
-          ],
-        },
-        probe_2: {
-          current_temp: 179,
-          alarm_max: 120,
-          alarm_min: 35,
-          history: [
-            70.1, 70.1, 70, 70.1, 70.1, 70.2, 70.2, 70.2, 70.2, 70.2, 70.3,
-            70.4, 70.4, 70.5, 70.6, 70.7, 70.7, 70.7, 70.7, 70.9, 71, 70.9,
-            70.9, 70.8, 70.7, 70.7, 70.7, 70.7, 70.6, 70.6, 70.5, 70.5, 70.5,
-            70.5, 70.5, 70.4, 70.4, 70.4, 70.4, 70.4, 70.4, 70.4, 70.4, 70.4,
-            70.3, 70.4, 70.4, 70.3, 70.4, 70.3, 70.3, 70.3, 70.3, 70.2, 70.2,
-            70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2,
-            70.2, 70.2, 70.2, 70.2, 70.2, 72.2, 73.4, 73.9, 74.4, 74.1, 76.6,
-            80.7, 87.6, 96.9, 110.5, 126.1, 147.4, 168.9, 183.1, 180.4, 179.8,
-            179.9, 180.3, 180.9, 181.5, 181.9, 182.1, 182.3, 182.3, 182.1,
-            181.7, 181.3, 180.9, 180.4, 180, 179.4,
-          ],
-        },
-        probe_3: {
-          current_temp: 70,
-          alarm_max: 120,
-          alarm_min: 35,
-          history: [
-            84, 83.3, 82.8, 82, 81.5, 80.9, 80.3, 79.8, 79.6, 78.7, 77.8, 77.4,
-            76.7, 76.3, 75.7, 74.9, 74.8, 74, 74.2, 73.4, 73.2, 72.7, 72.5,
-            72.1, 72, 72, 71.7, 64.2, 70, 72.6, 71.3, 70.2, 70.2, 70.2, 70.2,
-            70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2,
-            70.3, 70.3, 70.2, 70.3, 70.3, 70.3, 70.4, 70.4, 70.4, 70.4, 70.4,
-            70.4, 70.4, 70.4, 70.4, 70.4, 70.4, 70.4, 70.5, 70.5, 70.4, 70.5,
-            70.5, 70.5, 70.6, 70.6, 70.6, 70.7, 70.7, 70.7, 70.7, 70.8, 70.9,
-            70.9, 71, 71, 70.9, 70.9, 70.9, 70.8, 70.7, 70.6, 70.5, 70.5, 70.5,
-            70.4, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.1, 70.1, 70.1, 70.1,
-          ],
-        },
-        probe_4: {
-          current_temp: 70,
-          alarm_max: 120,
-          alarm_min: 35,
-          history: [
-            179.4, 180, 180.4, 180.9, 181.3, 181.7, 182.1, 182.3, 182.3, 182.1,
-            181.9, 181.5, 180.9, 180.3, 179.9, 179.8, 180.4, 183.1, 168.9,
-            147.4, 126.1, 110.5, 96.9, 87.6, 80.7, 76.6, 74.1, 74.4, 73.9, 73.4,
-            72.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2,
-            70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.2, 70.3, 70.3, 70.3,
-            70.3, 70.4, 70.3, 70.4, 70.4, 70.3, 70.4, 70.4, 70.4, 70.4, 70.4,
-            70.4, 70.4, 70.4, 70.4, 70.5, 70.5, 70.5, 70.5, 70.5, 70.6, 70.6,
-            70.7, 70.7, 70.7, 70.7, 70.8, 70.9, 70.9, 71, 70.9, 70.7, 70.7,
-            70.7, 70.7, 70.6, 70.5, 70.4, 70.4, 70.3, 70.2, 70.2, 70.2, 70.2,
-            70.2, 70.1, 70.1, 70, 70.1, 70.1,
-          ],
-        },
-        billows: false,
-      })
-    )
+    return res(ctx.delay(500), ctx.json(buildSmokeData()))
   }),
   rest.get("/wlan-config", (req, res, ctx) => {
     return res(
       ctx.delay(500),
       ctx.json({
         mode: 1,
-        authType: 5,
-        ssid: "fun_wifi_thing",
-        username: "a_username",
-        password: "a_password",
+        authType: 3,
+        ssid: "BackyardBBQ",
+        // The firmware never returns the stored password (always blank).
+        username: "",
+        password: "",
       })
     )
   }),
@@ -119,7 +102,7 @@ export default [
         isPaired: true,
         deviceId: "|ABC12",
         currentFrequency: 915000000,
-        deviceModel: "X2",
+        deviceModel: "X4",
       })
     )
   }),
@@ -127,22 +110,13 @@ export default [
     return res(
       ctx.delay(500),
       ctx.json({
-        uri: "mqtt://your.mqtt.broker",
-        identity: "your_identity",
-        username: "your_username",
-        password: "your_password",
-        ca_cert:
-          "-----BEGIN CERTIFICATE-----\n\
-Paste Certificate Here\n\
------END CERTIFICATE-----",
-        client_cert:
-          "-----BEGIN CERTIFICATE-----\n\
-Paste Client Certificate Here\n\
------END CERTIFICATE-----",
-        client_key:
-          "-----BEGIN KEY-----\n\
-Paste Client Key Here\n\
------END KEY-----",
+        uri: "mqtt://homeassistant.local:1883",
+        identity: "",
+        username: "smoke-x",
+        password: "",
+        ca_cert: "",
+        client_cert: "",
+        client_key: "",
         use_mqtt: true,
         cert_auth: false,
         enabled: true,
@@ -153,6 +127,9 @@ Paste Client Key Here\n\
         state_topic: "homeassistant/smoke-x/state",
       })
     )
+  }),
+  rest.post("/mqtt-config", (req, res, ctx) => {
+    return res(ctx.delay(300), ctx.json({ success: true }))
   }),
   rest.get("/rf-params", (req, res, ctx) => {
     return res(
