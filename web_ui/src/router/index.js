@@ -3,6 +3,7 @@ import WlanConfigForm from "../components/WlanConfigForm.vue"
 import StatusForm from "../components/StatusForm.vue"
 import MqttConfigForm from "../components/MqttConfigForm.vue"
 import SmokeXConfigForm from "../components/SmokeXConfigForm.vue"
+import LoraAdvancedForm from "../components/LoraAdvancedForm.vue"
 
 const routes = [
   {
@@ -24,6 +25,13 @@ const routes = [
     path: "/pairing",
     name: "pairing",
     component: SmokeXConfigForm,
+  },
+  {
+    // Deep-linkable: "/lora" is whitelisted in the firmware's SPA routing.
+    // Reached from the Pairing page, intentionally not a top-level nav tab.
+    path: "/lora",
+    name: "lora",
+    component: LoraAdvancedForm,
   },
 ]
 

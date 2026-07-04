@@ -12,6 +12,19 @@ export const deviceModel = ref(null)
 export const deviceId = ref(null)
 export const currentFrequency = ref(null)
 
+// RF/LoRa parameters change rarely, so this is fetched on demand (not polled)
+// and shared between the read-only Pairing display and the Advanced page.
+export const rfParams = ref(null)
+
+export async function loadRfParams() {
+  try {
+    const res = await axios.get("rf-params")
+    rfParams.value = res.data
+  } catch (e) {
+    /* leave previous value */
+  }
+}
+
 const FAST_MS = 2000
 const SLOW_MS = 10000
 

@@ -17,13 +17,7 @@
         {{ isLoading ? "---" : isPaired ? "PAIRED" : "NOT PAIRED" }} <br />
         <b>Model:</b>
         {{ isPaired ? deviceModel : "---" }} <br />
-        <b>Device ID:</b> {{ deviceId ? deviceId : "---" }} <br />
-        <b>Frequency:</b>
-        {{
-          currentFrequency
-            ? (currentFrequency / 1000000).toPrecision(6) + " MHz"
-            : "---"
-        }}
+        <b>Device ID:</b> {{ deviceId ? deviceId : "---" }}
         <div v-if="isLoading == false">
           <div v-if="isPaired == false">
             <br />
@@ -46,6 +40,24 @@
         </div>
       </div>
     </FormKit>
+
+    <div v-if="rfParams" class="rf-readout">
+      <div class="rf-title">RF Parameters</div>
+      <div class="rf-grid">
+        <span>Frequency</span
+        ><span>{{ (rfParams.frequency / 1000000).toPrecision(6) }} MHz</span>
+        <span>Spreading Factor</span><span>{{ rfParams.spreadingFactor }}</span>
+        <span>Bandwidth</span><span>{{ rfParams.bandwidth / 1000 }} kHz</span>
+        <span>Coding Rate</span><span>4/{{ rfParams.codingRate }}</span>
+        <span>TX Power</span><span>{{ rfParams.txPower }} dBm</span>
+        <span>Sync Word</span
+        ><span>0x{{ rfParams.syncWord.toString(16) }}</span>
+        <span>CRC</span><span>{{ rfParams.enableCRC ? "on" : "off" }}</span>
+      </div>
+      <router-link to="/lora" class="advanced-link">
+        Advanced RF settings &rarr;
+      </router-link>
+    </div>
   </div>
 </template>
 
@@ -62,7 +74,8 @@ import {
   isPaired,
   deviceModel,
   deviceId,
-  currentFrequency,
+  rfParams,
+  loadRfParams,
   markUnpaired,
 } from "../device"
 
@@ -78,7 +91,7 @@ export default {
       isPaired,
       deviceModel,
       deviceId,
-      currentFrequency,
+      rfParams,
       isLoading: computed(() => !loaded.value),
     }
   },
@@ -86,6 +99,9 @@ export default {
     return {
       image: Img1,
     }
+  },
+  mounted() {
+    loadRfParams()
   },
   methods: {
     async unpair() {
@@ -116,5 +132,43 @@ export default {
   margin: 0;
   margin-bottom: 2rem;
   text-align: left;
+}
+
+.rf-readout {
+  width: calc(100% - 2em);
+  max-width: 480px;
+  box-sizing: border-box;
+  margin: 1em auto;
+  padding: 1.25em 2em;
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 0.5em;
+  box-shadow: 0 0 1em var(--shadow);
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+}
+.rf-title {
+  font-weight: bold;
+  margin-bottom: 0.75em;
+}
+.rf-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.35em 1em;
+  font-size: 0.9em;
+}
+.rf-grid span:nth-child(odd) {
+  color: var(--text-muted);
+}
+.rf-grid span:nth-child(even) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.advanced-link {
+  display: inline-block;
+  margin-top: 1em;
+  color: var(--accent);
+  font-weight: bold;
+  text-decoration: none;
+  font-size: 0.85em;
 }
 </style>

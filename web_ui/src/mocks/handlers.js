@@ -171,4 +171,10 @@ Paste Client Key Here\n\
       })
     )
   }),
+  rest.post("/rf-params", (req, res, ctx) => {
+    return res(ctx.delay(300), ctx.json({ success: true }))
+  }),
+  rest.post("/cmd", (req, res, ctx) => {
+    return res(ctx.delay(300), ctx.json({ success: true }))
+  }),
 ]
