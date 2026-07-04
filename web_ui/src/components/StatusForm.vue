@@ -21,8 +21,20 @@
           <div class="probe-temp">
             {{ fmt(p.current_temp) }}<span class="probe-unit">°F</span>
           </div>
-          <div class="probe-range">
-            Alarm {{ fmt(p.alarm_min) }}° &ndash; {{ fmt(p.alarm_max) }}°
+          <div class="probe-footer">
+            <div class="stat-grid extremes">
+              <span class="g" title="Session high">&uarr;</span>
+              <span class="v">{{ fmt(p.hi) }}°</span>
+              <span class="g" title="Session low">&darr;</span>
+              <span class="v">{{ fmt(p.lo) }}°</span>
+            </div>
+            <div class="stat-grid alarm">
+              <span class="lbl">Alarm</span>
+              <span class="g" title="High alarm">&#9650;</span>
+              <span class="v">{{ fmt(p.alarm_max) }}°</span>
+              <span class="g" title="Low alarm">&#9660;</span>
+              <span class="v">{{ fmt(p.alarm_min) }}°</span>
+            </div>
           </div>
         </div>
       </div>
@@ -167,16 +179,24 @@ export default {
   computed: {
     probes() {
       if (!this.data) return []
-      return probeKeys(this.data).map((k, i) => ({
-        key: k,
-        short: `P${k.split("_")[1]}`,
-        label: `Probe ${k.split("_")[1]}`,
-        color: PROBE_COLORS[i % PROBE_COLORS.length],
-        current_temp: this.data[k].current_temp,
-        alarm_min: this.data[k].alarm_min,
-        alarm_max: this.data[k].alarm_max,
-        state: this.stateOf(this.data[k]),
-      }))
+      return probeKeys(this.data).map((k, i) => {
+        const hist = (this.data[k].history || []).filter(
+          (v) => typeof v === "number"
+        )
+        return {
+          key: k,
+          short: `P${k.split("_")[1]}`,
+          label: `Probe ${k.split("_")[1]}`,
+          color: PROBE_COLORS[i % PROBE_COLORS.length],
+          current_temp: this.data[k].current_temp,
+          alarm_min: this.data[k].alarm_min,
+          alarm_max: this.data[k].alarm_max,
+          // Session extremes observed over the collected history.
+          hi: hist.length ? Math.max(...hist) : null,
+          lo: hist.length ? Math.min(...hist) : null,
+          state: this.stateOf(this.data[k]),
+        }
+      })
     },
     billows() {
       return !!(this.data && this.data.billows)
@@ -415,9 +435,39 @@ export default {
   margin-left: 0.15em;
   color: var(--text-muted);
 }
-.probe-range {
-  font-size: 0.8em;
+.probe-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 0.75em;
+  margin-top: 0.3em;
   color: var(--text-muted);
+}
+.stat-grid {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 0.3em;
+  row-gap: 0.05em;
+  align-items: baseline;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+.stat-grid .v {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.extremes {
+  font-size: 0.8em;
+}
+.alarm {
+  font-size: 0.72em;
+}
+.alarm .lbl {
+  grid-column: 1 / -1;
+  text-align: right;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
 }
 
 .billows-chip {

@@ -51,20 +51,20 @@ import { togglePasswordVisibility } from "../formkit-password"
         validation="required"
       />
       <FormKit
+        v-show="value.authType == 5"
         id="username"
-        :disabled="value.authType != 5"
         type="text"
         name="username"
         label="Username"
-        :validation="value.authType != 5 ? 'optional' : 'required'"
+        :validation="value.authType == 5 ? 'required' : 'optional'"
       />
       <FormKit
+        v-show="value.authType != 0"
         id="password"
-        :disabled="value.authType == 0"
         type="password"
         name="password"
         label="Password"
-        :validation="value.authType == 0 ? 'optional' : 'required'"
+        :validation="value.authType != 0 ? 'required' : 'optional'"
         suffix-icon="eyeClosed"
         @suffix-icon-click="togglePasswordVisibility"
       />
