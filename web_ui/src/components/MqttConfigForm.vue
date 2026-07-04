@@ -1,14 +1,10 @@
 <script setup>
 import { ref } from 'vue'
+import { togglePasswordVisibility } from "../formkit-password"
 
 const clientCertAuth = ref(false)
 const useTLS = ref(false)
 const HADiscovery = ref(false)
-
-const handleIconClick = (node) => {
-  node.props.suffixIcon = node.props.suffixIcon === 'eye' ? 'eyeClosed' : 'eye'
-  node.props.type = node.props.type === 'password' ? 'text' : 'password'
-}
 </script>
 
 <template>
@@ -38,7 +34,7 @@ const handleIconClick = (node) => {
       <FormKit
 id="password" type="password" name="password" label="Password"
         suffix-icon="eyeClosed"
-        @suffix-icon-click="handleIconClick" />
+        @suffix-icon-click="togglePasswordVisibility" />
         <FormKit
       id="use_tls"
       v-model="useTLS"

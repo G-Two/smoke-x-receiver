@@ -1,8 +1,5 @@
 <script setup>
-const handleIconClick = (node) => {
-  node.props.suffixIcon = node.props.suffixIcon === 'eye' ? 'eyeClosed' : 'eye'
-  node.props.type = node.props.type === 'password' ? 'text' : 'password'
-}
+import { togglePasswordVisibility } from "../formkit-password"
 </script>
 
 <template>
@@ -69,7 +66,7 @@ const handleIconClick = (node) => {
         label="Password"
         :validation="value.authType == 0 ? 'optional' : 'required'"
         suffix-icon="eyeClosed"
-        @suffix-icon-click="handleIconClick"
+        @suffix-icon-click="togglePasswordVisibility"
       />
     </FormKit>
   </div>
