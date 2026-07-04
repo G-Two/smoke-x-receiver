@@ -180,7 +180,7 @@ export default {
         await postJSON("cmd", {
           command: "startTx",
           message: fields.message || "",
-          repeatInterval: parseInt(fields.repeatInterval) || 0,
+          repeatInterval: parseInt(fields.repeatInterval, 10) || 0,
         })
         notify("Transmitting")
       } catch (error) {

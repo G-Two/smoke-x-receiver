@@ -216,8 +216,11 @@ export default {
             grid: { display: true, drawOnChartArea: true, color: c.grid },
             ticks: {
               color: c.tick,
-              callback: (v) => (v === 0 ? "now" : `${v}m`),
-            },
+              callback: (v) => {
+                const n = Number(v)
+                return n === 0 ? "now" : `${Math.abs(n)}m`
+              },
+            }
           },
           y: {
             border: { display: true, color: c.grid },

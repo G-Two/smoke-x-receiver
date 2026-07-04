@@ -1,7 +1,7 @@
 // Single shared poll of the device's pairing/reachability status, consumed by
 // both the nav status pill and the Pairing page. Polls fast while unpaired (to
-// catch a pairing quickly) and slowly once paired; pauses while the tab is
-// hidden.
+// catch a pairing quickly) and slowly once paired; skips network requests while
+// the tab is hidden.
 import { ref } from "vue"
 import { getJSON } from "./api"
 

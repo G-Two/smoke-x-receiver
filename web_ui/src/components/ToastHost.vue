@@ -11,7 +11,7 @@ import { toasts, dismiss } from "../toasts"
         class="toast"
         :class="`toast-${t.type}`"
         :role="t.type === 'error' ? 'alert' : 'status'"
-        aria-live="polite"
+        :aria-live="t.type === 'error' ? 'assertive' : 'polite'"
         @click="dismiss(t.id)"
       >
         {{ t.message }}
