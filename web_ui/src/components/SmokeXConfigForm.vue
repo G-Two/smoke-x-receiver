@@ -62,7 +62,7 @@
 </template>
 
 <script>
-import * as axios from "axios"
+import { postJSON } from "../api"
 import { computed } from "vue"
 import Loading from "vue-loading-overlay"
 import "vue-loading-overlay/dist/css/index.css"
@@ -111,7 +111,7 @@ export default {
       )
       if (!ok) return
       try {
-        await axios.post("cmd", { command: "unpair" })
+        await postJSON("cmd", { command: "unpair" })
         notify("Unpaired from base station")
       } catch (error) {
         notify("Failed to unpair", "error")

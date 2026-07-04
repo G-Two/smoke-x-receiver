@@ -3,7 +3,7 @@
 // catch a pairing quickly) and slowly once paired; pauses while the tab is
 // hidden.
 import { ref } from "vue"
-import * as axios from "axios"
+import { getJSON } from "./api"
 
 export const loaded = ref(false)
 export const reachable = ref(true)
@@ -18,8 +18,7 @@ export const rfParams = ref(null)
 
 export async function loadRfParams() {
   try {
-    const res = await axios.get("rf-params")
-    rfParams.value = res.data
+    rfParams.value = await getJSON("rf-params")
   } catch (e) {
     /* leave previous value */
   }
@@ -34,11 +33,11 @@ let timer = null
 async function poll() {
   if (!document.hidden) {
     try {
-      const res = await axios.get("pairing-status")
-      isPaired.value = !!res.data.isPaired
-      deviceModel.value = res.data.deviceModel
-      deviceId.value = res.data.deviceId
-      currentFrequency.value = res.data.currentFrequency
+      const d = await getJSON("pairing-status")
+      isPaired.value = !!d.isPaired
+      deviceModel.value = d.deviceModel
+      deviceId.value = d.deviceId
+      currentFrequency.value = d.currentFrequency
       reachable.value = true
     } catch (e) {
       reachable.value = false

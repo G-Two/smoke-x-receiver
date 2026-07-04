@@ -132,7 +132,7 @@ Paste client key in PEM format
 </template>
 
 <script>
-import * as axios from "axios"
+import { getJSON, postJSON } from "../api"
 import { getNode } from "@formkit/core"
 import Loading from "vue-loading-overlay"
 import "vue-loading-overlay/dist/css/index.css"
@@ -148,26 +148,23 @@ export default {
       isLoading: true,
     }
   },
-  mounted: async function () {
-    axios
-      .get("mqtt-config")
-      .then((res) => {
-        console.log(res)
-        getNode("enabled").input(res.data.enabled)
-        getNode("uri").input(res.data.uri)
-        getNode("identity").input(res.data.identity)
-        getNode("username").input(res.data.username)
-        getNode("password").input(res.data.password)
-        getNode("ca_cert").input(res.data.ca_cert)
-        getNode("cert_auth").input(res.data.cert_auth)
-        getNode("client_cert").input(res.data.client_cert)
-        getNode("client_key").input(res.data.client_key)
-        getNode("enabled").input(res.data.enabled)
-        getNode("ha_discovery").input(res.data.ha_discovery)
-        getNode("ha_base_topic").input(res.data.ha_base_topic)
-        getNode("ha_status_topic").input(res.data.ha_status_topic)
-        getNode("ha_birth_payload").input(res.data.ha_birth_payload)
-        getNode("state_topic").input(res.data.state_topic)
+  mounted: function () {
+    getJSON("mqtt-config")
+      .then((data) => {
+        getNode("enabled").input(data.enabled)
+        getNode("uri").input(data.uri)
+        getNode("identity").input(data.identity)
+        getNode("username").input(data.username)
+        getNode("password").input(data.password)
+        getNode("ca_cert").input(data.ca_cert)
+        getNode("cert_auth").input(data.cert_auth)
+        getNode("client_cert").input(data.client_cert)
+        getNode("client_key").input(data.client_key)
+        getNode("ha_discovery").input(data.ha_discovery)
+        getNode("ha_base_topic").input(data.ha_base_topic)
+        getNode("ha_status_topic").input(data.ha_status_topic)
+        getNode("ha_birth_payload").input(data.ha_birth_payload)
+        getNode("state_topic").input(data.state_topic)
         this.isLoading = false
       })
       .catch(() => {
@@ -178,7 +175,7 @@ export default {
   methods: {
     async sendToServer(fields) {
       try {
-        await axios.post("mqtt-config", fields)
+        await postJSON("mqtt-config", fields)
         notify("MQTT settings saved")
       } catch (error) {
         notify("Failed to save MQTT settings", "error")

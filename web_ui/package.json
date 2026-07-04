@@ -11,11 +11,10 @@
     "format": "prettier .  --write"
   },
   "dependencies": {
-    "@formkit/addons": "^0.16.5",
-    "@formkit/icons": "next",
-    "@formkit/themes": "^0.17.0-4304213",
-    "@formkit/vue": "next",
-    "axios": "^0.21.1",
+    "@formkit/addons": "^2.1.0",
+    "@formkit/icons": "^2.1.0",
+    "@formkit/themes": "^2.1.0",
+    "@formkit/vue": "^2.1.0",
     "chart.js": "^4.3.0",
     "msw": "^1.2.1",
     "vue": "^3.2.47",

@@ -62,7 +62,7 @@ import {
   LinearScale,
   PointElement,
 } from "chart.js"
-import * as axios from "axios"
+import { getJSON } from "../api"
 import { isDark } from "../theme"
 
 ChartJS.register(
@@ -287,9 +287,9 @@ export default {
     },
     async getData() {
       try {
-        const res = await axios.get("data")
-        this.data = res.data
-        this.chartData = this.convertData(res.data)
+        const data = await getJSON("data")
+        this.data = data
+        this.chartData = this.convertData(data)
         this.error = false
       } catch (error) {
         this.error = true

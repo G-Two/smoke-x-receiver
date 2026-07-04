@@ -111,7 +111,7 @@
 </template>
 
 <script>
-import * as axios from "axios"
+import { getJSON, postJSON } from "../api"
 import { getNode } from "@formkit/core"
 import Loading from "vue-loading-overlay"
 import "vue-loading-overlay/dist/css/index.css"
@@ -128,10 +128,8 @@ export default {
     }
   },
   mounted() {
-    axios
-      .get("rf-params")
-      .then((res) => {
-        const d = res.data
+    getJSON("rf-params")
+      .then((d) => {
         getNode("frequency").input(d.frequency)
         getNode("txPower").input(d.txPower)
         getNode("bandwidth").input(d.bandwidth)
@@ -166,7 +164,7 @@ export default {
         implicitHeader: !!fields.implicitHeader,
       }
       try {
-        await axios.post("rf-params", payload)
+        await postJSON("rf-params", payload)
         notify("RF parameters saved")
         loadRfParams()
       } catch (error) {
@@ -175,7 +173,7 @@ export default {
     },
     async transmit(fields) {
       try {
-        await axios.post("cmd", {
+        await postJSON("cmd", {
           command: "startTx",
           message: fields.message || "",
           repeatInterval: parseInt(fields.repeatInterval) || 0,
@@ -187,7 +185,7 @@ export default {
     },
     async stopTx() {
       try {
-        await axios.post("cmd", { command: "stopTx" })
+        await postJSON("cmd", { command: "stopTx" })
         notify("Transmit stopped")
       } catch (error) {
         notify("Failed to stop transmit", "error")

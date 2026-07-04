@@ -73,7 +73,7 @@ import { togglePasswordVisibility } from "../formkit-password"
 </template>
 
 <script>
-import * as axios from "axios"
+import { getJSON, postJSON } from "../api"
 import { getNode } from "@formkit/core"
 import Loading from "vue-loading-overlay"
 import "vue-loading-overlay/dist/css/index.css"
@@ -89,16 +89,14 @@ export default {
       isLoading: true,
     }
   },
-  mounted: async function () {
-    axios
-      .get("wlan-config")
-      .then((res) => {
-        console.log(res)
-        getNode("mode").input(res.data.mode)
-        getNode("authType").input(res.data.authType)
-        getNode("ssid").input(res.data.ssid)
-        getNode("username").input(res.data.username)
-        getNode("password").input(res.data.password)
+  mounted: function () {
+    getJSON("wlan-config")
+      .then((data) => {
+        getNode("mode").input(data.mode)
+        getNode("authType").input(data.authType)
+        getNode("ssid").input(data.ssid)
+        getNode("username").input(data.username)
+        getNode("password").input(data.password)
         this.isLoading = false
       })
       .catch(() => {
@@ -111,7 +109,7 @@ export default {
       fields.authType = parseInt(fields.authType)
       fields.mode = parseInt(fields.mode)
       try {
-        await axios.post("wlan-config", fields)
+        await postJSON("wlan-config", fields)
         notify("WLAN settings saved")
       } catch (error) {
         notify("Failed to save WLAN settings", "error")
