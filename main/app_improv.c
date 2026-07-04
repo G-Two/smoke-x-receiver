@@ -114,10 +114,9 @@ static void handle_wifi_settings(const improv_rpc_t *rpc) {
         send_rpc_result_url(IMPROV_CMD_WIFI_SETTINGS, url);
         send_state(IMPROV_STATE_PROVISIONED);
         /* PROVISIONED is the per-session "we just succeeded" signal. After
-         * the host has read it, fall back to AUTHORIZED so a later dialog
-         * reopen sees fresh state — otherwise the browser receives a stale
-         * PROVISIONED without the accompanying URL it expects and the
-         * dialog closes with no actionable info. */
+        /* PROVISIONED is only emitted as an immediate post-success signal.
+         * Reset our stored state to AUTHORIZED so a later dialog reopen doesn't
+         * see a stale PROVISIONED without the accompanying URL. */
         s_state = IMPROV_STATE_AUTHORIZED;
     } else {
         send_error(IMPROV_ERR_UNABLE_TO_CONNECT);
@@ -165,8 +164,8 @@ static void improv_task(void *arg) {
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
         .source_clk = UART_SCLK_DEFAULT,
     };
-    uart_param_config(IMPROV_UART_NUM, &uart_cfg);
-    uart_driver_install(IMPROV_UART_NUM, IMPROV_RX_BUF_SIZE * 2, 0, 0, NULL, 0);
+    ESP_ERROR_CHECK(uart_param_config(IMPROV_UART_NUM, &uart_cfg));
+    ESP_ERROR_CHECK(uart_driver_install(IMPROV_UART_NUM, IMPROV_RX_BUF_SIZE * 2, 0, 0, NULL, 0));
 
     improv_parser_t parser;
     improv_parser_reset(&parser);

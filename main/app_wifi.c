@@ -244,8 +244,11 @@ static void apply_params(const app_wifi_params_t *params) {
         ESP_ERROR_CHECK(esp_wifi_start());
         ESP_ERROR_CHECK(esp_netif_set_hostname(sta_netif, HOSTNAME));
 
-        xTaskCreate(&sta_fail_detect, "app_wifi_sta_fail_detect", 4096, NULL, 5,
-                    &sta_fail_detect_task);
+        if (xTaskCreate(&sta_fail_detect, "app_wifi_sta_fail_detect", 4096, NULL, 5,
+                        &sta_fail_detect_task) != pdPASS) {
+            sta_fail_detect_task = NULL;
+            ESP_LOGE(TAG, "Failed to create STA fail-detect task");
+        }
     } else if (params->mode == WIFI_MODE_AP) {
         app_wifi_init_ap(params->ssid, params->password);
     }
@@ -280,7 +283,11 @@ void app_wifi_set_params(app_wifi_params_t *params) {
         return;
     }
     memcpy(copy, params, sizeof(*copy));
-    xTaskCreate(&set_params_task, "app_wifi_set_params", 4096, copy, 5, NULL);
+    BaseType_t ok = xTaskCreate(&set_params_task, "app_wifi_set_params", 4096, copy, 5, NULL);
+    if (ok != pdPASS) {
+        ESP_LOGE(TAG, "Failed to start app_wifi_set_params task");
+        free(copy);
+    }
 }
 
 void app_wifi_init() {
@@ -394,19 +401,8 @@ esp_err_t app_wifi_try_connect(const char *ssid, const char *password,
     sta_netif = esp_netif_create_default_wifi_sta();
     if (!sta_netif) return ESP_FAIL;
 
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    esp_err_t err = esp_wifi_init(&cfg);
-    if (err != ESP_OK && err != ESP_ERR_WIFI_INIT_STATE) {
-        /* INIT_STATE = already initialized, which is fine. */
-        return err;
-    }
-
-    /* Re-register handlers; harmless if already registered (we get an
-     * "overwriting" warning at worst). */
-    esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
-                               &wifi_event_handler, NULL);
-    esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
-                               &wifi_event_handler, NULL);
+    /* Wi-Fi driver and event handlers are initialized once in ensure_wifi_inited(). */
+    ensure_wifi_inited();
 
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
     ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
