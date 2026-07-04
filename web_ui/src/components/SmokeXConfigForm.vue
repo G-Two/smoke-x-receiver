@@ -51,33 +51,41 @@
 
 <script>
 import * as axios from "axios"
+import { computed } from "vue"
 import Loading from "vue-loading-overlay"
 import "vue-loading-overlay/dist/css/index.css"
 import Img1 from "/src/sync_button.png"
 import { notify } from "../toasts"
 import { confirm } from "../confirm"
+import {
+  loaded,
+  isPaired,
+  deviceModel,
+  deviceId,
+  currentFrequency,
+  markUnpaired,
+} from "../device"
 
 export default {
   name: "SmokeXConfigForm",
   components: {
     Loading,
   },
-  data() {
+  setup() {
+    // Pairing status comes from the shared device store (also drives the nav
+    // pill), so this page no longer runs its own poll.
     return {
-      isPaired: false,
-      currentFrequency: null,
-      deviceId: null,
-      deviceModel: null,
-      isLoading: true,
-      image: Img1,
+      isPaired,
+      deviceModel,
+      deviceId,
+      currentFrequency,
+      isLoading: computed(() => !loaded.value),
     }
   },
-  created: async function () {
-    await this.getData()
-    this.timer = setInterval(this.getData, 2000)
-  },
-  beforeUnmount: function () {
-    clearInterval(this.timer)
+  data() {
+    return {
+      image: Img1,
+    }
   },
   methods: {
     async unpair() {
@@ -92,28 +100,7 @@ export default {
       } catch (error) {
         notify("Failed to unpair", "error")
       }
-      this.isPaired = false
-      this.currentFrequency = null
-      this.deviceId = null
-      this.deviceModel = null
-      this.timer = setInterval(this.getData, 2000)
-    },
-    async getData() {
-      axios
-        .get("pairing-status")
-        .then((res) => {
-          this.isPaired = res.data.isPaired
-          this.currentFrequency = res.data.currentFrequency
-          this.deviceId = res.data.deviceId
-          this.deviceModel = res.data.deviceModel
-          this.isLoading = false
-          if (this.isPaired) {
-            clearInterval(this.timer)
-          }
-        })
-        .catch((error) => {
-          console.log(error)
-        })
+      markUnpaired()
     },
   },
 }
@@ -124,11 +111,10 @@ export default {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: #2c3e50;
+  color: var(--text);
   padding-top: 1rem;
   margin: 0;
   margin-bottom: 2rem;
   text-align: left;
-  color: #2c3e50;
 }
 </style>
