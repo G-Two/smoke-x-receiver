@@ -118,6 +118,10 @@ import "vue-loading-overlay/dist/css/index.css"
 import { notify } from "../toasts"
 import { loadRfParams } from "../device"
 
+// parseInt returns NaN for empty/invalid inputs; JSON.stringify converts NaN
+// to null, which the firmware cannot parse. Coerce to 0 as a safe fallback.
+const toInt = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : 0 }
+
 export default {
   name: "LoraAdvancedForm",
   components: { Loading },
@@ -152,14 +156,14 @@ export default {
       // The firmware reads every field unconditionally (no null checks), so
       // always send the full set with correct numeric/boolean types.
       const payload = {
-        frequency: parseInt(fields.frequency),
-        txPower: parseInt(fields.txPower),
-        bandwidth: parseInt(fields.bandwidth),
-        spreadingFactor: parseInt(fields.spreadingFactor),
-        codingRate: parseInt(fields.codingRate),
-        preambleLength: parseInt(fields.preambleLength),
-        messageLength: parseInt(fields.messageLength),
-        syncWord: parseInt(fields.syncWord),
+        frequency: toInt(fields.frequency),
+        txPower: toInt(fields.txPower),
+        bandwidth: toInt(fields.bandwidth),
+        spreadingFactor: toInt(fields.spreadingFactor),
+        codingRate: toInt(fields.codingRate),
+        preambleLength: toInt(fields.preambleLength),
+        messageLength: toInt(fields.messageLength),
+        syncWord: toInt(fields.syncWord),
         enableCRC: !!fields.enableCRC,
         implicitHeader: !!fields.implicitHeader,
       }

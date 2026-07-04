@@ -112,11 +112,11 @@ export default {
       if (!ok) return
       try {
         await postJSON("cmd", { command: "unpair" })
+        markUnpaired()
         notify("Unpaired from base station")
       } catch (error) {
         notify("Failed to unpair", "error")
       }
-      markUnpaired()
     },
   },
 }

@@ -6,6 +6,11 @@ import { ref } from "vue"
 export const confirmState = ref(null)
 
 export function confirm(message, opts = {}) {
+  // If a confirmation is already open, resolve it as cancelled (false) to
+  // prevent the previous Promise from leaking when the state is replaced.
+  if (confirmState.value) {
+    confirmState.value.resolve(false)
+  }
   return new Promise((resolve) => {
     confirmState.value = {
       message,
