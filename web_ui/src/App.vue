@@ -52,11 +52,18 @@ const statusText = computed(() =>
     : "Unpaired"
 )
 
-// The tab strip is retractable so it doesn't sit on screen the whole time.
-// It starts collapsed and tucks itself away again once a destination is chosen.
+// The tab strip is retractable. It starts collapsed, and once opened it stays
+// open after picking a destination so you can hop between config pages in one
+// tap. It only auto-collapses when you land on the dashboard ("/") — reached
+// via the Status tab or the brand wordmark.
 const navOpen = ref(false)
 const route = useRoute()
-watch(() => route.path, () => (navOpen.value = false))
+watch(
+  () => route.path,
+  (path) => {
+    if (path === "/") navOpen.value = false
+  }
+)
 
 onMounted(startDevicePolling)
 </script>
@@ -123,7 +130,6 @@ onMounted(startDevicePolling)
           :to="t.to"
           class="tab"
           :tabindex="navOpen ? 0 : -1"
-          @click="navOpen = false"
         >
           <svg
             class="tab-icon"

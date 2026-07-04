@@ -12,6 +12,10 @@
   --shadow: rgba(0, 0, 0, 0.08);
   --accent: #42b983;
   --code-bg: rgba(0, 100, 250, 0.08);
+  /* The constant ThermoWorks-amber brand color. Unlike --brand (which flips to
+     dark ink on the amber header in light mode), this stays amber in both
+     themes for things like the loading spinner. */
+  --brand-amber: #f59e0b;
 
   /* Branded header bar — amber field with dark ink (ThermoWorks style), in
      BOTH themes for a consistent wordmark. Dark text reads ~9:1 on the amber. */

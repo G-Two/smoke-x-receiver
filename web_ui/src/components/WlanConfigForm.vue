@@ -6,9 +6,10 @@ import { togglePasswordVisibility } from "../formkit-password"
   <div id="wlan-config-form">
     <loading
       v-model:active="isLoading"
-      color="var(--accent)"
+      color="var(--brand-amber)"
       background-color="var(--bg)"
       :opacity="0.9"
+      :z-index="490"
     />
     <FormKit v-slot="{ value }" type="form" @submit="sendToServer">
       <FormKit

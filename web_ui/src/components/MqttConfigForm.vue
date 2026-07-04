@@ -11,9 +11,10 @@ const HADiscovery = ref(false)
   <div id="mqtt-config-form">
     <loading
       v-model:active="isLoading"
-      color="var(--accent)"
+      color="var(--brand-amber)"
       background-color="var(--bg)"
       :opacity="0.9"
+      :z-index="490"
     />
     <FormKit type="form" @submit="sendToServer">
       <FormKit

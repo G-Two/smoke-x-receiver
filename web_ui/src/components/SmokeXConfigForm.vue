@@ -8,9 +8,10 @@
     >
       <loading
         v-model:active="isLoading"
-        color="var(--accent)"
+        color="var(--brand-amber)"
         background-color="var(--bg)"
         :opacity="0.9"
+        :z-index="490"
       />
       <div class="status">
         <b>Status:</b>
