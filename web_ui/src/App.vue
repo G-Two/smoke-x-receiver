@@ -68,6 +68,7 @@ onMounted(startDevicePolling)
             class="theme-toggle"
             type="button"
             :title="`Theme: ${preference} (click to change)`"
+            :aria-label="`Theme: ${preference}. Click to change.`"
             @click="cyclePreference"
           >
             {{ THEME_ICONS[preference] }}

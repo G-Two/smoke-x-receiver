@@ -1,5 +1,20 @@
 <script setup>
+import { ref, watch, nextTick, onMounted, onUnmounted } from "vue"
 import { confirmState, resolveConfirm } from "../confirm"
+
+// Move focus to Cancel (the safe default) when the dialog opens, and allow
+// Escape to dismiss — basic keyboard accessibility for the modal.
+const cancelBtn = ref(null)
+
+watch(confirmState, (state) => {
+  if (state) nextTick(() => cancelBtn.value && cancelBtn.value.focus())
+})
+
+const onKeydown = (e) => {
+  if (confirmState.value && e.key === "Escape") resolveConfirm(false)
+}
+onMounted(() => window.addEventListener("keydown", onKeydown))
+onUnmounted(() => window.removeEventListener("keydown", onKeydown))
 </script>
 
 <template>
@@ -13,6 +28,7 @@ import { confirmState, resolveConfirm } from "../confirm"
         <p class="confirm-message">{{ confirmState.message }}</p>
         <div class="confirm-actions">
           <button
+            ref="cancelBtn"
             class="confirm-btn confirm-cancel"
             type="button"
             @click="resolveConfirm(false)"

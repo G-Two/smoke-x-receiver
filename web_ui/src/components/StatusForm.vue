@@ -1,6 +1,6 @@
 <template>
   <div id="status">
-    <div v-if="error" class="banner banner-error">
+    <div v-if="error" class="banner banner-error" role="alert">
       Device unreachable — retrying&hellip;
     </div>
 
@@ -29,7 +29,12 @@
 
       <div v-if="billows" class="billows-chip">Billows connected</div>
 
-      <div id="canvasWrapper" style="position: relative; height: 60vh">
+      <div
+        id="canvasWrapper"
+        style="position: relative; height: 60vh"
+        role="img"
+        :aria-label="chartSummary"
+      >
         <Line :data="chartData" :options="options" :plugins="[alarmLinesPlugin]" />
       </div>
     </template>
@@ -84,11 +89,13 @@ const CHART_COLORS = {
 // Shared palette so the probe cards and chart lines always match. Vivid,
 // well-separated hues (Tailwind 500s) that stay sharp on light and dark
 // backgrounds; `faint` is the same hue at lower alpha for the min-alarm line.
+// `dash`/`point` give each probe a distinct line texture and legend marker so
+// the series stay distinguishable without relying on color (colorblind-safe).
 const PROBE_COLORS = [
-  { line: "#ef4444", faint: "rgba(239, 68, 68, 0.5)" }, // red
-  { line: "#3b82f6", faint: "rgba(59, 130, 246, 0.5)" }, // blue
-  { line: "#22c55e", faint: "rgba(34, 197, 94, 0.5)" }, // green
-  { line: "#f59e0b", faint: "rgba(245, 158, 11, 0.5)" }, // amber
+  { line: "#ef4444", faint: "rgba(239, 68, 68, 0.5)", dash: [], point: "circle" }, // red
+  { line: "#3b82f6", faint: "rgba(59, 130, 246, 0.5)", dash: [7, 3], point: "rect" }, // blue
+  { line: "#22c55e", faint: "rgba(34, 197, 94, 0.5)", dash: [2, 3], point: "triangle" }, // green
+  { line: "#f59e0b", faint: "rgba(245, 158, 11, 0.5)", dash: [9, 3, 2, 3], point: "rectRot" }, // amber
 ]
 
 const probeKeys = (data) =>
@@ -162,6 +169,17 @@ export default {
     billows() {
       return !!(this.data && this.data.billows)
     },
+    // Text alternative for the canvas chart (which screen readers can't read).
+    chartSummary() {
+      if (!this.probes.length) return "Temperature history chart"
+      const parts = this.probes.map((p) => {
+        const state = p.state === "ok" ? "" : ` (${this.stateLabel(p.state)})`
+        return `${p.label} ${this.fmt(p.current_temp)}°F${state}`
+      })
+      return `Temperature history over about 4 hours. Latest readings: ${parts.join(
+        ", "
+      )}.`
+    },
     options() {
       const alarmVals = this.probes.flatMap((p) => [p.alarm_min, p.alarm_max])
       const finite = alarmVals.filter((v) => typeof v === "number")
@@ -171,7 +189,10 @@ export default {
         maintainAspectRatio: false,
         animation: false,
         plugins: {
-          legend: { position: "bottom", labels: { color: c.legend } },
+          legend: {
+            position: "bottom",
+            labels: { color: c.legend, usePointStyle: true },
+          },
           tooltip: {
             callbacks: {
               title: (items) => {
@@ -239,6 +260,7 @@ export default {
         datasets: keys.map((k, i) => {
           const history = data[k].history
           const last = history.length - 1
+          const color = PROBE_COLORS[i % PROBE_COLORS.length]
           return {
             label: `Probe ${k.split("_")[1]}`,
             // x is minutes before now: oldest sample is most negative, the
@@ -249,7 +271,10 @@ export default {
               y,
             })),
             fill: false,
-            borderColor: PROBE_COLORS[i % PROBE_COLORS.length].line,
+            borderColor: color.line,
+            // Distinct texture + legend marker per probe (colorblind-safe).
+            borderDash: color.dash,
+            pointStyle: color.point,
             tension: 0,
             pointRadius: 2,
           }
