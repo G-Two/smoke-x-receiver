@@ -77,14 +77,44 @@ Even if you're not a Home Assistant user, you can still use this application's b
 
 An ESP32 with attached Semtech LoRa transceiver operating in the 915 MHz ISM band is required. A combined ESP32+LoRa development board such as the Heltec WiFi LoRa 32 [V2](https://heltec.org/project/wifi-lora-32/) or [V3](https://heltec.org/project/wifi-lora-32-v3/) is ideal, but any ESP32 board with a SPI connected SX1276 or SX1262 should work.
 
-- Both the Heltec WiFi LoRa 32 V2(SX1276) and V3(SX1262) have been tested to work with this application
+| Board                                                                 | ESP32 Chip | LoRa   | Status                                                         |
+| --------------------------------------------------------------------- | ---------- | ------ | -------------------------------------------------------------- |
+| [Heltec WiFi LoRa 32 V2](https://heltec.org/project/wifi-lora-32/)    | ESP32      | SX1276 | Tested                                                         |
+| [Heltec WiFi LoRa 32 V3](https://heltec.org/project/wifi-lora-32-v3/) | ESP32-S3   | SX1262 | Tested                                                         |
+| [Heltec WiFi LoRa 32 V4](https://heltec.org/project/wifi-lora-32-v4/) | ESP32-S3   | SX1262 | Untested — same ESP32 chip and GPIO as V3; use the V3 firmware |
+
 - Build-tool requirements (ESP-IDF, Node.js, CMake) are listed in [CONTRIBUTING.md](CONTRIBUTING.md) and are only needed if you're building from source
 
 ---
 
 ## Install
 
-The easiest way to get firmware on a supported board is the [browser-based installer](https://g-two.github.io/smoke-x-receiver/) — plug a Heltec WiFi LoRa 32 V2 or V3 into your USB port and click "Install" from a Chromium-based browser. It auto-detects the chip and flashes the matching binary from the latest GitHub release.
+The easiest way to get firmware on a supported board is the [browser-based installer](https://g-two.github.io/smoke-x-receiver/) — plug a Heltec WiFi LoRa 32 V2 or V3 into your USB port and click "Install" from any WebSerial-capable browser (Chrome, Edge, Brave, Firefox, and others). It auto-detects the chip and flashes the matching binary from the latest GitHub release.
+
+### Manual flashing with esptool
+
+If you prefer to flash manually, download the merged binary for your board from the [latest GitHub release](https://github.com/G-Two/smoke-x-receiver/releases/latest):
+
+- `smoke-x-receiver-heltec-v2.bin` — Heltec WiFi LoRa 32 V2 (ESP32 + SX1276)
+- `smoke-x-receiver-heltec-v3.bin` — Heltec WiFi LoRa 32 V3 or V4 (ESP32-S3 + SX1262)
+
+Install esptool if you don't already have it:
+
+```bash
+pip install esptool
+```
+
+Then flash (replace `/dev/cu.usbserial-0001` with your actual port — `ls /dev/cu.usbserial-*` on macOS, `ls /dev/ttyUSB*` or `ls /dev/ttyACM*` on Linux):
+
+```bash
+# Heltec WiFi LoRa 32 V2
+python -m esptool --chip esp32 -p /dev/cu.usbserial-0001 -b 460800 \
+    write_flash 0x1000 smoke-x-receiver-heltec-v2.bin
+
+# Heltec WiFi LoRa 32 V3 or V4
+python -m esptool --chip esp32s3 -p /dev/cu.usbserial-0001 -b 460800 \
+    write_flash 0x0 smoke-x-receiver-heltec-v3.bin
+```
 
 If you'd rather build from source (to customize the firmware, run a development version, or use a board the installer doesn't recognize), see [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -100,13 +130,18 @@ After the ESP32 is flashed, several items need to be configured and saved to NVR
 
 ### WLAN Network Configuration
 
-The device will default to AP mode if WLAN information has not been configured, or if the connection fails. The default AP mode information (configurable in menuconfig) is:
+**Improv-Serial (easiest, PSK networks only)**
 
-- SSID: "Smoke X Receiver"
-- PSK: "The extra B is for BYOBB"
+After browser-flashing, the install dialog runs [Improv-Serial](https://www.improv-wifi.com/) — enter your SSID and password directly in the browser and the device connects without rebooting. The dialog will show the device URL when it succeeds. This method supports WPA2/WPA3 personal (PSK) networks only.
 
-Connect to the ESP32's AP and use a web browser to navigate to http://192.168.4.1/wlan
-You will be presented with a self-explanatory web UI to configure the device to your home network. WPA2/WPA3-PSK and WPA2/WPA3-Enterprise (EAP-TTLS) are supported. Once you apply your network authentication information, the device will reset and attempt to join your home network. The ESP32 will supply a DHCP client hostname request for `smoke_x`. Once you find the ESP32 on your home network, you may proceed with the remainder of the setup process. If the ESP32 fails to join your network, it will revert to default AP mode.
+**AP-mode setup (enterprise networks, or if Improv was skipped)**
+
+The device falls back to AP mode if no network is configured, if the Improv step was skipped, or if the configured network is unreachable. Default AP credentials (configurable in menuconfig):
+
+- SSID: `Smoke X Receiver`
+- PSK: `The extra B is for BYOBB`
+
+Connect to the ESP32's AP and open http://192.168.4.1/wlan in a browser. The configuration page supports WPA2/WPA3-PSK and WPA2/WPA3-Enterprise (EAP-TTLS). Once you apply your settings the device attempts to join the network; if it fails it returns to AP mode. The ESP32 requests the DHCP hostname `smokex` and its IP address will be shown on the OLED display.
 
 ### Smoke X Pairing
 

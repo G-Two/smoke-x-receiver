@@ -198,6 +198,21 @@
         font-family: "SF Mono", Menlo, Consolas, monospace;
         font-size: 0.92em;
       }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1em 0;
+      }
+      th,
+      td {
+        border: 1px solid var(--border);
+        padding: 0.45em 0.75em;
+        text-align: left;
+      }
+      th {
+        background: var(--bg-soft);
+        font-weight: 600;
+      }
       a {
         color: var(--accent);
       }
@@ -212,47 +227,12 @@
   </head>
   <body>
     <header>
-      <h1>ESP32 Receiver for ThermoWorks Smoke X2/X4</h1>
+      <h1>ThermoWorks Smoke X2/X4 Receiver</h1>
       <p class="tagline">
-        Open-source ESP32 + LoRa firmware for the ThermoWorks Smoke X2 and Smoke
-        X4 wireless thermometers.
+        Open-source ESP32 + LoRa firmware to receive ThermoWorks Smoke X2/X4
+        wireless thermometer signals
       </p>
     </header>
-
-    <section class="install-cta">
-      <strong>Plug a Heltec WiFi LoRa 32 board into USB, then:</strong>
-      <esp-web-install-button manifest="manifest.json">
-        <button class="install-button" slot="activate">
-          Install Smoke X Receiver
-        </button>
-        <span slot="unsupported">
-          Your browser doesn't support WebSerial. Use a recent desktop version
-          of Chrome, Edge, Brave, Arc, Opera, or Firefox, or follow the
-          <a
-            href="https://github.com/G-Two/smoke-x-receiver/blob/main/CONTRIBUTING.md"
-            >build-from-source instructions</a
-          >.
-        </span>
-        <span slot="not-allowed">
-          WebSerial access was blocked. Make sure the page is loaded over HTTPS
-          and that no other program is holding the serial port.
-        </span>
-      </esp-web-install-button>
-      <p class="note">
-        Auto-detects Heltec V2 (ESP32 + SX1276) vs V3 (ESP32-S3 + SX1262) and
-        flashes the matching firmware. Requires a desktop browser with WebSerial
-        support (Chrome / Edge / Brave / Arc / Opera / recent Firefox). Other
-        ESP32 boards may work but may require configuring and building from
-        source.
-      </p>
-      <p class="note">
-        <strong>Reflashing an already-configured device?</strong> When the
-        installer prompts <em>"Erase device first?"</em>, choose
-        <strong>"Don't erase"</strong> to preserve your WLAN credentials, MQTT
-        settings, and Smoke X pairing. Choose <strong>"Erase"</strong>
-        only for a clean first install or to reset everything.
-      </p>
-    </section>
 
     <h2>What it does</h2>
     <figure class="float-right">
@@ -263,11 +243,13 @@
       <figcaption>Included Smoke X2 receiver</figcaption>
     </figure>
     <p>
-      The ThermoWorks Smoke X2 and Smoke X4 are excellent BBQ / smoker
-      thermometers — accurate, long RF range, long battery life, no app
-      required. But the included receiver only shows the current probe readings.
-      There's no way to record history, set alerts beyond the built-in alarm, or
-      integrate with home automation.
+      The
+      <a href="https://www.thermoworks.com/smokex2/">ThermoWorks Smoke X2</a>
+      and <a href="https://www.thermoworks.com/smokex4/">Smoke X4</a> are
+      excellent BBQ / smoker thermometers — accurate, long RF range, long
+      battery life, no app required. But the included receiver only shows the
+      current probe readings. There's no way to record history, set alerts
+      beyond the built-in alarm, or integrate with home automation.
     </p>
     <p>
       This project turns a low-cost
@@ -396,34 +378,147 @@ flowchart LR
       transceiver operating in the 915 MHz ISM band will work. The supported and
       tested boards are:
     </p>
-    <ul>
-      <li>
-        <a href="https://heltec.org/project/wifi-lora-32/"
-          >Heltec WiFi LoRa 32 V2</a
-        >
-        (ESP32 + SX1276)
-      </li>
-      <li>
-        <a href="https://heltec.org/project/wifi-lora-32-v3/"
-          >Heltec WiFi LoRa 32 V3</a
-        >
-        (ESP32-S3 + SX1262)
-      </li>
-    </ul>
+    <table>
+      <thead>
+        <tr>
+          <th>Board</th>
+          <th>ESP32 Chip</th>
+          <th>LoRa</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <a href="https://heltec.org/project/wifi-lora-32/"
+              >Heltec WiFi LoRa 32 V2</a
+            >
+          </td>
+          <td>ESP32</td>
+          <td>SX1276</td>
+          <td>Tested</td>
+        </tr>
+        <tr>
+          <td>
+            <a href="https://heltec.org/project/wifi-lora-32-v3/"
+              >Heltec WiFi LoRa 32 V3</a
+            >
+          </td>
+          <td>ESP32-S3</td>
+          <td>SX1262</td>
+          <td>Tested</td>
+        </tr>
+        <tr>
+          <td>
+            <a href="https://heltec.org/project/wifi-lora-32-v4/"
+              >Heltec WiFi LoRa 32 V4</a
+            >
+          </td>
+          <td>ESP32-S3</td>
+          <td>SX1262</td>
+          <td>
+            Untested — same ESP32 chip and GPIO as V3; use the V3 firmware
+          </td>
+        </tr>
+      </tbody>
+    </table>
 
-    <h2>After flashing</h2>
+    <section class="install-cta">
+      <strong>Plug a Heltec WiFi LoRa 32 board into USB, then:</strong>
+      <esp-web-install-button manifest="manifest.json">
+        <button class="install-button" slot="activate">
+          Install Smoke X Receiver
+        </button>
+        <span slot="unsupported">
+          Your browser doesn't support WebSerial. Use a recent desktop version
+          of Chrome, Edge, Brave, Arc, Opera, or Firefox, or follow the
+          <a
+            href="https://github.com/G-Two/smoke-x-receiver/blob/main/CONTRIBUTING.md"
+            >build-from-source instructions</a
+          >.
+        </span>
+        <span slot="not-allowed">
+          WebSerial access was blocked. Make sure the page is loaded over HTTPS
+          and that no other program is holding the serial port.
+        </span>
+      </esp-web-install-button>
+      <p class="note">
+        Auto-detects Heltec V2 (ESP32 + SX1276) vs V3 (ESP32-S3 + SX1262) and
+        flashes the matching firmware. Requires a desktop browser with WebSerial
+        support (Chrome / Edge / Brave / Arc / Opera / recent Firefox). Other
+        ESP32 boards may work but may require configuring and building from
+        source.
+      </p>
+      <p class="note">
+        <strong>Can't use WebSerial?</strong> Download the merged binary for
+        your board from the
+        <a href="https://github.com/G-Two/smoke-x-receiver/releases/latest"
+          >latest GitHub release</a
+        >
+        and flash with
+        <a href="https://docs.espressif.com/projects/esptool/en/latest/"
+          >esptool</a
+        >:
+      </p>
+      <pre
+        class="note"
+        style="
+          text-align: left;
+          overflow-x: auto;
+          padding: 0.75em 1em;
+          background: var(--bg-soft);
+          border-radius: 6px;
+          font-family: 'SF Mono', Menlo, Consolas, monospace;
+          font-size: 0.82em;
+        "
+      >
+# Heltec V2 (ESP32 + SX1276)
+python -m esptool --chip esp32 -b 460800 write_flash 0x1000 smoke-x-receiver-heltec-v2.bin
+
+# Heltec V3 or V4 (ESP32-S3 + SX1262)
+python -m esptool --chip esp32s3 -b 460800 write_flash 0x0 smoke-x-receiver-heltec-v3.bin</pre
+      >
+    </section>
+
+    <h2 id="after-flashing">After flashing</h2>
+    <p><strong>Wi-Fi setup via Improv-Serial (PSK networks)</strong></p>
     <p>
-      The receiver boots into Wi-Fi access-point mode the first time. From your
-      phone or laptop, join the network
-      <strong>Smoke X Receiver</strong> (default password
-      <code>The extra B is for BYOBB</code>), then open
-      <a href="http://192.168.4.1/wlan">http://192.168.4.1/wlan</a> to point the
-      receiver at your home Wi-Fi.
+      After flashing, the install dialog will offer to configure Wi-Fi directly
+      from your browser using the
+      <a href="https://www.improv-wifi.com/">Improv-Serial</a> protocol. Enter
+      your SSID and password; the device connects without rebooting and the
+      dialog links you straight to the device web UI. This works with WPA2 and
+      WPA3 personal (PSK) networks only.
     </p>
+    <p>
+      <strong>AP-mode fallback (enterprise networks or skipped setup)</strong>
+    </p>
+    <p>
+      If your network uses <strong>WPA2/WPA3-Enterprise (EAP-TTLS)</strong>,
+      click <em>Skip</em> in the install dialog — Improv does not support
+      enterprise credentials. The device will initialize its own Wi-Fi access
+      point. This is also the case if you close the install dialog before
+      completing Wi-Fi setup, you manually installed with esptool, or any time
+      the device cannot reach its configured network. Join the device AP from
+      your phone or laptop:
+    </p>
+    <ul>
+      <li>SSID: <code>Smoke X Receiver</code></li>
+      <li>Password: <code>The extra B is for BYOBB</code></li>
+    </ul>
+    <p>
+      Navigate to
+      <a href="http://192.168.4.1/wlan">http://192.168.4.1/wlan</a> to enter
+      your WPA2/WPA3-PSK or WPA2/WPA3-Enterprise credentials (identity,
+      username, password, and optionally a CA certificate).
+    </p>
+
+    <p><strong>Once connected</strong></p>
     <p>Once on Wi-Fi, the device:</p>
     <ol>
       <li>
-        Acquires a DHCP address and requests hostname <code>smoke_x</code>.
+        Requests a DHCP address with the hostname <code>smokex</code> — the
+        device IP address will be shown on the OLED display.
       </li>
       <li>
         Waits for a sync transmission from a Smoke X2 / X4 base station — put
