@@ -13,6 +13,15 @@
   --accent: #42b983;
   --code-bg: rgba(0, 100, 250, 0.08);
 
+  /* Branded header bar. Intentionally dark in BOTH themes so the amber
+     wordmark keeps its contrast — defined only here and inherited by dark. */
+  --header-bg: #1e242f;
+  --header-fg: #eceef2;
+  --header-muted: #a3adbb;
+  --header-border: rgba(255, 255, 255, 0.12);
+  --header-btn-bg: rgba(255, 255, 255, 0.06);
+  --brand: #f59e0b;
+
   --alarm-high-fg: rgb(200, 75, 75);
   --alarm-high-bg: rgba(200, 75, 75, 0.08);
   --alarm-low-fg: rgb(75, 130, 200);

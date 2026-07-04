@@ -1,5 +1,6 @@
 <script setup>
-import { computed, onMounted } from "vue"
+import { computed, onMounted, ref, watch } from "vue"
+import { useRoute } from "vue-router"
 import { preference, cyclePreference } from "./theme"
 import {
   isPaired,
@@ -11,6 +12,10 @@ import ToastHost from "./components/ToastHost.vue"
 import ConfirmDialog from "./components/ConfirmDialog.vue"
 
 const THEME_ICONS = { auto: "◐", light: "☀", dark: "☾" }
+
+// Feather "menu" / "x" glyphs for the retract toggle.
+const MENU_ICON = ["M3 12h18", "M3 6h18", "M3 18h18"]
+const CLOSE_ICON = ["M18 6 6 18", "M6 6l12 12"]
 
 // Feather-style icons (stroke, currentColor). Each entry is a list of paths.
 const TABS = [
@@ -47,6 +52,12 @@ const statusText = computed(() =>
     : "Unpaired"
 )
 
+// The tab strip is retractable so it doesn't sit on screen the whole time.
+// It starts collapsed and tucks itself away again once a destination is chosen.
+const navOpen = ref(false)
+const route = useRoute()
+watch(() => route.path, () => (navOpen.value = false))
+
 onMounted(startDevicePolling)
 </script>
 
@@ -54,7 +65,36 @@ onMounted(startDevicePolling)
   <div>
     <header class="site-header">
       <div class="appbar">
-        <span class="brand">Smoke X Receiver</span>
+        <div class="appbar-left">
+          <button
+            class="nav-toggle"
+            type="button"
+            :aria-expanded="navOpen"
+            aria-controls="primary-nav"
+            :aria-label="navOpen ? 'Hide navigation' : 'Show navigation'"
+            @click="navOpen = !navOpen"
+          >
+            <svg
+              class="nav-toggle-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path
+                v-for="(d, i) in navOpen ? CLOSE_ICON : MENU_ICON"
+                :key="i"
+                :d="d"
+              />
+            </svg>
+          </button>
+          <router-link to="/" class="brand" aria-label="Go to dashboard">
+            Smoke X Receiver
+          </router-link>
+        </div>
         <div class="appbar-right">
           <span
             class="status-pill"
@@ -76,12 +116,14 @@ onMounted(startDevicePolling)
         </div>
       </div>
 
-      <nav class="tabbar">
+      <nav id="primary-nav" class="tabbar" :class="{ open: navOpen }">
         <router-link
           v-for="t in TABS"
           :key="t.to"
           :to="t.to"
           class="tab"
+          :tabindex="navOpen ? 0 : -1"
+          @click="navOpen = false"
         >
           <svg
             class="tab-icon"
@@ -111,7 +153,7 @@ onMounted(startDevicePolling)
   position: sticky;
   top: 0;
   z-index: 500;
-  background: var(--surface);
+  background: var(--header-bg);
 }
 
 .appbar {
@@ -120,13 +162,44 @@ onMounted(startDevicePolling)
   justify-content: space-between;
   gap: 0.5em;
   padding: 0.6em 1em;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--header-border);
+}
+
+.appbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  min-width: 0;
+}
+
+.nav-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--header-border);
+  background: var(--header-btn-bg);
+  color: var(--header-fg);
+  border-radius: 0.4em;
+  width: 2em;
+  height: 2em;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.nav-toggle-icon {
+  width: 20px;
+  height: 20px;
+  display: block;
 }
 
 .brand {
-  font-weight: bold;
-  font-size: 1.05em;
-  color: var(--text);
+  font-family: "Avenir Next Condensed", "Futura", "Trebuchet MS", system-ui,
+    sans-serif;
+  font-weight: 800;
+  font-size: 1.15em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brand);
+  text-decoration: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -145,8 +218,8 @@ onMounted(startDevicePolling)
   padding: 0.25em 0.6em;
   border-radius: 1em;
   white-space: nowrap;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
+  border: 1px solid var(--header-border);
+  color: var(--header-muted);
 }
 .pill-paired {
   background: var(--accent);
@@ -160,9 +233,9 @@ onMounted(startDevicePolling)
 }
 
 .theme-toggle {
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
+  border: 1px solid var(--header-border);
+  background: var(--header-btn-bg);
+  color: var(--header-fg);
   border-radius: 0.4em;
   width: 2em;
   height: 2em;
@@ -176,7 +249,20 @@ onMounted(startDevicePolling)
   display: flex;
   max-width: 720px;
   margin: 0 auto;
-  border-bottom: 1px solid var(--border);
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.22s ease, opacity 0.22s ease;
+}
+.tabbar.open {
+  max-height: 5em;
+  opacity: 1;
+  border-bottom: 1px solid var(--header-border);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tabbar {
+    transition: none;
+  }
 }
 
 .tab {
@@ -186,7 +272,7 @@ onMounted(startDevicePolling)
   align-items: center;
   gap: 3px;
   padding: 0.55em 0.25em;
-  color: var(--text-muted);
+  color: var(--header-muted);
   text-decoration: none;
   font-family: Avenir, Helvetica, Arial, sans-serif;
   font-size: 0.72em;
@@ -195,8 +281,8 @@ onMounted(startDevicePolling)
   margin-bottom: -1px;
 }
 .tab.router-link-exact-active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+  color: var(--brand);
+  border-bottom-color: var(--brand);
 }
 
 .tab-icon {

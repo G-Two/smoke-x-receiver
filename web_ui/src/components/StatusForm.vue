@@ -184,6 +184,21 @@ export default {
       const alarmVals = this.probes.flatMap((p) => [p.alarm_min, p.alarm_max])
       const finite = alarmVals.filter((v) => typeof v === "number")
       const c = isDark.value ? CHART_COLORS.dark : CHART_COLORS.light
+      // Once the history spans more than two hours, minute-scale ticks get
+      // crowded and hard to read, so switch the axis (and tooltip) to hours.
+      const spanMinutes = this.chartData
+        ? Math.max(
+            0,
+            ...this.chartData.datasets.flatMap((d) => d.data.map((pt) => -pt.x))
+          )
+        : 0
+      const useHours = spanMinutes > 120
+      const ago = (minutes) => {
+        if (minutes === 0) return "now"
+        if (!useHours) return `${minutes}m`
+        const total = Math.round(minutes)
+        return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`
+      }
       return {
         responsive: true,
         maintainAspectRatio: false,
@@ -196,8 +211,8 @@ export default {
           tooltip: {
             callbacks: {
               title: (items) => {
-                const x = items[0].parsed.x
-                return x === 0 ? "now" : `${-x} min ago`
+                const minutes = -items[0].parsed.x
+                return minutes === 0 ? "now" : `${ago(minutes)} ago`
               },
             },
           },
@@ -209,18 +224,15 @@ export default {
             type: "linear",
             title: {
               display: true,
-              text: "Minutes before now",
+              text: "Time ago",
               color: c.tick,
             },
             border: { display: true, color: c.grid },
             grid: { display: true, drawOnChartArea: true, color: c.grid },
             ticks: {
               color: c.tick,
-              callback: (v) => {
-                const n = Number(v)
-                return n === 0 ? "now" : `${Math.abs(n)}m`
-              },
-            }
+              callback: (v) => ago(Math.abs(Number(v))),
+            },
           },
           y: {
             border: { display: true, color: c.grid },
