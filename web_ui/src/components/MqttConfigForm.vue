@@ -156,11 +156,16 @@ export default {
   mounted: function () {
     getJSON("mqtt-config")
       .then((data) => {
+        const hasTLSConfig =
+          (typeof data.uri === "string" &&
+            data.uri.toLowerCase().startsWith("mqtts://")) ||
+          !!(data.ca_cert || data.cert_auth || data.client_cert || data.client_key)
         getNode("enabled").input(data.enabled)
         getNode("uri").input(data.uri)
         getNode("identity").input(data.identity)
         getNode("username").input(data.username)
         getNode("password").input(data.password)
+        getNode("use_tls").input(hasTLSConfig)
         getNode("ca_cert").input(data.ca_cert)
         getNode("cert_auth").input(data.cert_auth)
         getNode("client_cert").input(data.client_cert)

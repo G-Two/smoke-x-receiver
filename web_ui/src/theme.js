@@ -50,8 +50,14 @@ export function cyclePreference() {
   setPreference(order[(order.indexOf(preference.value) + 1) % order.length])
 }
 
-mql.addEventListener("change", () => {
+const onSchemeChange = () => {
   if (preference.value === "auto") apply()
-})
+}
+
+if (typeof mql.addEventListener === "function") {
+  mql.addEventListener("change", onSchemeChange)
+} else if (typeof mql.addListener === "function") {
+  mql.addListener(onSchemeChange)
+}
 
 apply()

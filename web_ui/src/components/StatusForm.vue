@@ -232,7 +232,13 @@ export default {
     chartData: null,
     alarmLinesPlugin,
     // Chart panel collapse state, remembered across visits. Defaults open.
-    chartOpen: localStorage.getItem("chartOpen") !== "false",
+    chartOpen: (() => {
+      try {
+        return localStorage.getItem("chartOpen") !== "false"
+      } catch (e) {
+        return true
+      }
+    })(),
   }),
   computed: {
     probes() {
@@ -353,7 +359,11 @@ export default {
   methods: {
     toggleChart() {
       this.chartOpen = !this.chartOpen
-      localStorage.setItem("chartOpen", String(this.chartOpen))
+      try {
+        localStorage.setItem("chartOpen", String(this.chartOpen))
+      } catch (e) {
+        /* storage unavailable — keep in-memory state only */
+      }
     },
     fmt(v) {
       return typeof v === "number" ? Math.round(v * 10) / 10 : "--"
