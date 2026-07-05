@@ -1,14 +1,19 @@
-// Generates the PWA/app icons and favicon from icons/icon.svg into public/.
+// Generates the app icons and favicon from icons/icon.svg into two places from
+// this single source, so they never drift:
+//   - web_ui/public/  (firmware-served web UI: PWA manifest icons + favicon)
+//   - docs/           (GitHub Pages installer page: favicon + apple-touch icon)
 // Run with `npm run icons` after editing icon.svg. Uses sharp (dev-only) so it
 // works cross-platform without ImageMagick/Chrome.
 import sharp from "sharp"
-import { readFileSync, writeFileSync } from "node:fs"
+import { readFileSync, writeFileSync, copyFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 
 const here = dirname(fileURLToPath(import.meta.url))
-const svg = readFileSync(join(here, "icon.svg"))
+const svgPath = join(here, "icon.svg")
+const svg = readFileSync(svgPath)
 const pub = join(here, "..", "public")
+const docs = join(here, "..", "..", "docs")
 
 const render = (size) => sharp(svg).resize(size, size).png().toBuffer()
 
@@ -36,16 +41,25 @@ function buildIco(images) {
 }
 
 async function main() {
-  await sharp(svg).resize(192, 192).png().toFile(join(pub, "icon-192.png"))
-  await sharp(svg).resize(512, 512).png().toFile(join(pub, "icon-512.png"))
-
+  const png192 = await render(192)
+  const png512 = await render(512)
   const favicon = buildIco([
     { size: 16, data: await render(16) },
     { size: 32, data: await render(32) },
   ])
+
+  // Firmware-served web UI (PWA manifest icons + favicon).
+  writeFileSync(join(pub, "icon-192.png"), png192)
+  writeFileSync(join(pub, "icon-512.png"), png512)
   writeFileSync(join(pub, "favicon.ico"), favicon)
 
-  console.log("Generated icon-192.png, icon-512.png, favicon.ico")
+  // GitHub Pages installer page (docs/) is served as committed static files,
+  // so regenerate its copies from the same source here to avoid drift.
+  writeFileSync(join(docs, "icon-192.png"), png192)
+  writeFileSync(join(docs, "favicon.ico"), favicon)
+  copyFileSync(svgPath, join(docs, "icon.svg"))
+
+  console.log("Generated icons into web_ui/public/ and docs/")
 }
 
 main()

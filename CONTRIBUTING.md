@@ -139,3 +139,13 @@ The web interface is written in Vue and is loaded onto the ESP32 flash file syst
 ```bash
 make mock-web-ui
 ```
+
+#### Icons
+
+All icons (the web UI favicon/PWA icons and the GitHub Pages installer favicon) are generated from a single source, `web_ui/icons/icon.svg`. After editing that SVG, regenerate them with:
+
+```bash
+npm --prefix web_ui run icons
+```
+
+This writes the icons into both `web_ui/public/` (firmware-served UI) and `docs/` (GitHub Pages installer page), so the two never drift. `docs/` is served as committed static files by GitHub Pages, so commit the regenerated copies.
