@@ -5,9 +5,14 @@
 //    pairing status must never be served from a stale cache.
 //  - Navigations: network-first, falling back to the cached app shell so the
 //    UI still opens when the device/Wi-Fi briefly drops (common outdoors).
-//  - Static assets (hashed JS/CSS/PNG, manifest, icons): cache-first, since
-//    their filenames are content-hashed and immutable.
+//  - Hashed static assets (JS/CSS/PNG): cache-first, since their filenames
+//    are content-hashed and immutable.
+//  - Stable-name assets (manifest, icons): network-first with cache fallback,
+//    so updates are picked up without bumping CACHE.
 const CACHE = "smokex-v1"
+
+// Stable-name (non-hashed) assets that must be re-checked on each load.
+const STABLE_ASSETS = /\/(manifest\.webmanifest|icon-[^/]+\.png)$/
 
 // Live-data endpoints served by the firmware — leave these to the network.
 const API_PATHS = [
@@ -51,7 +56,24 @@ self.addEventListener("fetch", (event) => {
     return
   }
 
-  // Static assets: serve from cache, else fetch and cache for next time.
+  // Stable-name assets (manifest, icons): network-first so updates are picked
+  // up without bumping CACHE; fall back to cache when offline.
+  if (STABLE_ASSETS.test(url.pathname)) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res.ok) {
+            const copy = res.clone()
+            caches.open(CACHE).then((c) => c.put(req, copy))
+          }
+          return res
+        })
+        .catch(() => caches.match(req))
+    )
+    return
+  }
+
+  // Hashed static assets: serve from cache, else fetch and cache for next time.
   event.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached

@@ -120,8 +120,9 @@ import { notify } from "../toasts"
 import { loadRfParams } from "../device"
 
 // parseInt returns NaN for empty/invalid inputs; JSON.stringify converts NaN
-// to null, which the firmware cannot parse. Coerce to 0 as a safe fallback.
-const toInt = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : 0 }
+// to null, which the firmware cannot parse. Return null so callers can detect
+// and reject invalid values rather than silently sending 0.
+const toInt = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : null }
 
 export default {
   name: "LoraAdvancedForm",
@@ -156,7 +157,9 @@ export default {
     async saveRfParams(fields) {
       // The firmware reads every field unconditionally (no null checks), so
       // always send the full set with correct numeric/boolean types.
-      const payload = {
+      // Validate all numeric fields first — reject the submission if any are
+      // missing or cannot be parsed as integers.
+      const numFields = {
         frequency: toInt(fields.frequency),
         txPower: toInt(fields.txPower),
         bandwidth: toInt(fields.bandwidth),
@@ -165,6 +168,13 @@ export default {
         preambleLength: toInt(fields.preambleLength),
         messageLength: toInt(fields.messageLength),
         syncWord: toInt(fields.syncWord),
+      }
+      if (Object.values(numFields).some((v) => v === null)) {
+        notify("All numeric fields are required and must be valid integers", "error")
+        return
+      }
+      const payload = {
+        ...numFields,
         enableCRC: !!fields.enableCRC,
         implicitHeader: !!fields.implicitHeader,
       }
