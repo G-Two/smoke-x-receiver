@@ -20,16 +20,4 @@ async function startApp() {
   app.mount("#app")
 }
 
-// Register the PWA service worker only in production builds. In dev the MSW
-// mock worker owns the same scope, so registering here would conflict.
-function registerServiceWorker() {
-  if (!import.meta.env.PROD || !("serviceWorker" in navigator)) return
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register(import.meta.env.BASE_URL + "sw.js")
-      .catch(() => {})
-  })
-}
-
 startApp()
-registerServiceWorker()
