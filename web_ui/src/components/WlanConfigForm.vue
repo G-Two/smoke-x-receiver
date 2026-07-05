@@ -109,6 +109,13 @@ export default {
     async sendToServer(fields) {
       fields.authType = parseInt(fields.authType)
       fields.mode = parseInt(fields.mode)
+      // Clear hidden credential fields so stale values are not submitted
+      if (fields.authType !== 5) {
+        fields.username = ""
+      }
+      if (fields.authType === 0) {
+        fields.password = ""
+      }
       try {
         await postJSON("wlan-config", fields)
         notify("WLAN settings saved")
