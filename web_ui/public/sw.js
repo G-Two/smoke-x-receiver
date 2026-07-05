@@ -7,12 +7,12 @@
 //    UI still opens when the device/Wi-Fi briefly drops (common outdoors).
 //  - Hashed static assets (JS/CSS/PNG): cache-first, since their filenames
 //    are content-hashed and immutable.
-//  - Stable-name assets (manifest, icons): network-first with cache fallback,
+//  - Stable-name assets (manifest, icons, favicon): network-first with cache fallback,
 //    so updates are picked up without bumping CACHE.
 const CACHE = "smokex-v1"
 
 // Stable-name (non-hashed) assets that must be re-checked on each load.
-const STABLE_ASSETS = /\/(manifest\.webmanifest|icon-[^/]+\.png)$/
+const STABLE_ASSETS = /\/(manifest\.webmanifest|icon-[^/]+\.png|favicon\.ico)$/
 
 // Live-data endpoints served by the firmware — leave these to the network.
 const API_PATHS = [
