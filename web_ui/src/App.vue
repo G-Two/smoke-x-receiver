@@ -1,6 +1,6 @@
 <script setup>
-import { computed, onMounted, ref, watch } from "vue"
-import { useRoute } from "vue-router"
+import { computed, onMounted, ref } from "vue"
+import { useRoute, useRouter } from "vue-router"
 import { preference, cyclePreference } from "./theme"
 import {
   isPaired,
@@ -10,16 +10,14 @@ import {
 } from "./device"
 import ToastHost from "./components/ToastHost.vue"
 import ConfirmDialog from "./components/ConfirmDialog.vue"
+import SettingsMenu from "./components/SettingsMenu.vue"
 
 const THEME_ICONS = { auto: "◐", light: "☀", dark: "☾" }
 
-// Feather "menu" / "x" glyphs for the retract toggle.
-const MENU_ICON = ["M3 12h18", "M3 6h18", "M3 18h18"]
-const CLOSE_ICON = ["M18 6 6 18", "M6 6l12 12"]
-
 // Feather-style icons (stroke, currentColor). Each entry is a list of paths.
+// The dashboard ("/") is intentionally NOT a tab — it's reached by closing the
+// menu (or the brand wordmark). The menu is a "configuration mode".
 const TABS = [
-  { to: "/", label: "Status", icon: ["M22 12h-4l-3 9L9 3l-3 9H2"] },
   {
     to: "/wlan",
     label: "WLAN",
@@ -52,18 +50,32 @@ const statusText = computed(() =>
     : "Unpaired"
 )
 
-// The tab strip is retractable. It starts collapsed, and once opened it stays
-// open after picking a destination so you can hop between config pages in one
-// tap. It only auto-collapses when you land on the dashboard ("/") — reached
-// via the Status tab or the brand wordmark.
-const navOpen = ref(false)
+// The tab strip is a "configuration mode": opening the menu reveals the three
+// config pages; the dashboard is home. The strip stays visible while on any
+// config page (and on deep-links/refresh), and closing it (the ✕) always
+// returns to the dashboard.
 const route = useRoute()
-watch(
-  () => route.path,
-  (path) => {
-    if (path === "/") navOpen.value = false
+const router = useRouter()
+const navOpen = ref(route.path !== "/")
+// The dashboard is "/"; the tab strip is only relevant while on a config page.
+const onConfigPage = computed(() => route.path !== "/")
+
+// Gear: enter settings (show the hub) from the dashboard, or exit to the
+// dashboard from anywhere in settings.
+function toggleNav() {
+  if (navOpen.value) {
+    navOpen.value = false
+    if (route.path !== "/") router.push("/")
+  } else {
+    navOpen.value = true
   }
-)
+}
+
+// Back arrow (shown on a config page): return up to the settings hub.
+function goToHub() {
+  navOpen.value = true
+  if (route.path !== "/") router.push("/")
+}
 
 onMounted(startDevicePolling)
 </script>
@@ -73,13 +85,13 @@ onMounted(startDevicePolling)
     <header class="site-header">
       <div class="appbar">
         <div class="appbar-left">
+          <!-- Back to the settings hub — only shown while on a config page. -->
           <button
+            v-if="onConfigPage"
             class="nav-toggle"
             type="button"
-            :aria-expanded="navOpen"
-            aria-controls="primary-nav"
-            :aria-label="navOpen ? 'Hide navigation' : 'Show navigation'"
-            @click="navOpen = !navOpen"
+            aria-label="Back to settings"
+            @click="goToHub"
           >
             <svg
               class="nav-toggle-icon"
@@ -91,14 +103,15 @@ onMounted(startDevicePolling)
               stroke-linejoin="round"
               aria-hidden="true"
             >
-              <path
-                v-for="(d, i) in navOpen ? CLOSE_ICON : MENU_ICON"
-                :key="i"
-                :d="d"
-              />
+              <path d="M15 18l-6-6 6-6" />
             </svg>
           </button>
-          <router-link to="/" class="brand" aria-label="Go to dashboard">
+          <router-link
+            to="/"
+            class="brand"
+            aria-label="Go to dashboard"
+            @click="navOpen = false"
+          >
             Smoke X Receiver
           </router-link>
         </div>
@@ -120,16 +133,43 @@ onMounted(startDevicePolling)
           >
             {{ THEME_ICONS[preference] }}
           </button>
+          <!-- Settings gear — enters settings (the hub) from the dashboard, or
+               exits to the dashboard from any settings view. -->
+          <button
+            class="nav-toggle"
+            :class="{ active: navOpen }"
+            type="button"
+            :aria-label="
+              navOpen ? 'Close settings and return to dashboard' : 'Open settings'
+            "
+            @click="toggleNav"
+          >
+            <svg
+              class="nav-toggle-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+              />
+            </svg>
+          </button>
         </div>
       </div>
 
-      <nav id="primary-nav" class="tabbar" :class="{ open: navOpen }">
+      <nav id="primary-nav" class="tabbar" :class="{ open: onConfigPage }">
         <router-link
           v-for="t in TABS"
           :key="t.to"
           :to="t.to"
           class="tab"
-          :tabindex="navOpen ? 0 : -1"
+          :tabindex="onConfigPage ? 0 : -1"
         >
           <svg
             class="tab-icon"
@@ -148,7 +188,11 @@ onMounted(startDevicePolling)
       </nav>
     </header>
 
-    <router-view />
+    <!-- In settings mode on the dashboard route, replace the dashboard with the
+         settings guide; otherwise show the routed view (dashboard or a config
+         page). -->
+    <SettingsMenu v-if="navOpen && !onConfigPage" />
+    <router-view v-else />
     <ToastHost />
     <ConfirmDialog />
   </div>
@@ -186,15 +230,27 @@ onMounted(startDevicePolling)
   background: var(--header-btn-bg);
   color: var(--header-fg);
   border-radius: 0.4em;
-  width: 2em;
-  height: 2em;
+  width: 2rem;
+  height: 2rem;
   cursor: pointer;
   flex-shrink: 0;
 }
+/* Pressed/active look while settings mode is on (both the gear on the hub and
+   the back arrow on a config page). Theme-safe tint that reads on the dark
+   header and the amber header alike. */
+.nav-toggle.active {
+  background: var(--header-active-bg);
+  border-color: var(--brand);
+}
 .nav-toggle-icon {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   display: block;
+  /* Match the nav tabs: muted when not selected, brand color when active. */
+  color: var(--header-muted);
+}
+.nav-toggle.active .nav-toggle-icon {
+  color: var(--brand);
 }
 
 .brand {
@@ -241,14 +297,20 @@ onMounted(startDevicePolling)
 }
 
 .theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--header-border);
   background: var(--header-btn-bg);
   color: var(--header-fg);
   border-radius: 0.4em;
-  width: 2em;
-  height: 2em;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
   cursor: pointer;
-  font-size: 1em;
+  /* Larger than the box's base so the text glyph fills the button as much as
+     the gear SVG does — box is in rem so this doesn't resize it. */
+  font-size: 1.4rem;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -291,6 +353,9 @@ onMounted(startDevicePolling)
 .tab.router-link-exact-active {
   color: var(--brand);
   border-bottom-color: var(--brand);
+  /* Background highlight so selection is clear even in light mode, where the
+     brand and muted colors are both dark ink on the amber header. */
+  background: var(--header-active-bg);
 }
 
 .tab-icon {

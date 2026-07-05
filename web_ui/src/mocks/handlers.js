@@ -64,7 +64,7 @@ function buildSmokeData() {
     probe_1: probe(beef, 32, 203), // beef (brisket) — target 203°F
     probe_2: probe(pork, 32, 203), // pork (shoulder) — target 203°F
     probe_3: probe(chicken, 32, 165), // chicken — target 165°F
-    probe_4: probe(pit, 225, 275), // smoker/pit — holding ~250°F
+    probe_4: probe(pit, 250, 250), // smoker/pit — Billows control probe, setpoint 250°F
     billows: true,
   }
 }

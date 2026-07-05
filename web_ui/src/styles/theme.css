@@ -24,6 +24,9 @@
   --header-muted: rgba(32, 26, 8, 0.66);
   --header-border: rgba(0, 0, 0, 0.18);
   --header-btn-bg: rgba(0, 0, 0, 0.08);
+  /* Active/selected tint for header controls — LIGHTENS the amber bar so the
+     selected item reads as brighter/raised. (Darkening felt like "disabled".) */
+  --header-active-bg: rgba(255, 255, 255, 0.55);
   --brand: #201a08;
   /* Status pills sit on the amber bar, so both use a solid fill + white text
      for legibility rather than the light-background tint styles. */
@@ -61,6 +64,7 @@
   --header-muted: #a3adbb;
   --header-border: rgba(255, 255, 255, 0.12);
   --header-btn-bg: rgba(255, 255, 255, 0.06);
+  --header-active-bg: rgba(255, 255, 255, 0.16);
   --brand: #f59e0b;
 
   --alarm-high-fg: rgb(240, 130, 130);
