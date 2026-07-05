@@ -128,9 +128,14 @@ static esp_err_t rest_common_get_handler(httpd_req_t *req) {
     } else {
         strlcat(filepath, req->uri, sizeof(filepath));
         // hashed build outputs are immutable; stable-name assets (e.g. the PWA
-        // manifest) must not receive a long-lived cache so browsers can detect
-        // updates without a cache-name bump
-        if (!CHECK_FILE_EXTENSION(req->uri, ".webmanifest")) {
+        // manifest, service worker, and icons) must not receive a long-lived
+        // cache so browsers can detect updates without a cache-name bump
+        if (CHECK_FILE_EXTENSION(req->uri, ".webmanifest") ||
+            !strcmp(req->uri, "/sw.js") || !strcmp(req->uri, "/favicon.ico") ||
+            (strncmp(req->uri, "/icon-", strlen("/icon-")) == 0 &&
+             CHECK_FILE_EXTENSION(req->uri, ".png"))) {
+            httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+        } else {
             httpd_resp_set_hdr(req, "Cache-Control", "max-age=604800");
         }
     }

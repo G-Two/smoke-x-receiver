@@ -305,7 +305,7 @@ export default {
       if (!keys.length) return null
       return {
         datasets: keys.map((k, i) => {
-          const history = data[k].history
+          const history = Array.isArray(data[k].history) ? data[k].history : []
           const last = history.length - 1
           const color = PROBE_COLORS[i % PROBE_COLORS.length]
           return {
