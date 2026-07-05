@@ -187,7 +187,11 @@ export default {
       }
     },
     async transmit(fields) {
-      const repeatInterval = Math.max(0, parseInt(fields.repeatInterval, 10) || 0)
+      const parsedRepeatInterval = parseInt(fields.repeatInterval, 10)
+      const repeatInterval = Math.max(
+        0,
+        Number.isFinite(parsedRepeatInterval) ? parsedRepeatInterval : 0
+      )
       try {
         await postJSON("cmd", {
           command: "startTx",
