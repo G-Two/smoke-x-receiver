@@ -54,10 +54,14 @@ const onSchemeChange = () => {
   if (preference.value === "auto") apply()
 }
 
-if (typeof mql.addEventListener === "function") {
-  mql.addEventListener("change", onSchemeChange)
-} else if (typeof mql.addListener === "function") {
-  mql.addListener(onSchemeChange)
+try {
+  if (typeof mql.addEventListener === "function") {
+    mql.addEventListener("change", onSchemeChange)
+  } else if (typeof mql.addListener === "function") {
+    mql.addListener(onSchemeChange)
+  }
+} catch (e) {
+  /* listener registration unavailable — theme still applies on load/manual toggle */
 }
 
 apply()
