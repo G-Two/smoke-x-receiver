@@ -31,6 +31,7 @@ let started = false
 let timer = null
 
 async function poll() {
+  clearTimeout(timer)
   if (!document.hidden) {
     try {
       const d = await getJSON("pairing-status")
@@ -45,7 +46,6 @@ async function poll() {
       loaded.value = true
     }
   }
-  clearTimeout(timer)
   timer = setTimeout(poll, isPaired.value ? SLOW_MS : FAST_MS)
 }
 
