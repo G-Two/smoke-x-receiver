@@ -220,7 +220,14 @@ In addition, the application will subscribe to the Home Assistant status topic f
 
 ## HTTP API
 
-The application provides an HTTP API (used by the web UI's temperature history graph) that may also be used by any other client that is able to send HTTP requests to the ESP32.
+The application provides an HTTP API (used by the web UI for the temperature
+history graph and all of the configuration pages) that may also be used by any
+other client that is able to send HTTP requests to the ESP32.
+
+There is no authentication; the device is intended for use on a trusted local
+network. `GET` endpoints return JSON. `POST` endpoints accept a JSON body and
+reply `200 OK` with a short plain-text confirmation string (not JSON) on
+success.
 
 ### GET /data
 
@@ -245,3 +252,139 @@ Response:
 ```
 
 _NOTE:_ X4 devices will also include additional data for probes 3 and 4
+
+### GET /pairing-status
+
+Reports whether the receiver is paired with a transmitter, plus basic device
+info.
+
+Response:
+
+```json
+{
+  "isPaired": 1,
+  "currentFrequency": 915000000,
+  "deviceId": "|ABC12",
+  "deviceModel": "X2"
+}
+```
+
+`isPaired` is `1` when paired, `0` otherwise. `currentFrequency` is in Hz.
+`deviceModel` is `X2` or `X4`.
+
+### GET /rf-params
+
+Returns the current LoRa radio parameters.
+
+Response:
+
+```json
+{
+  "txPower": 10,
+  "bandwidth": 125000,
+  "enableCRC": true,
+  "codingRate": 5,
+  "frequency": 915000000,
+  "implicitHeader": false,
+  "messageLength": 20,
+  "syncWord": 18,
+  "spreadingFactor": 7,
+  "preambleLength": 10
+}
+```
+
+### POST /rf-params
+
+Sets the LoRa radio parameters. The request body has the same shape as the
+`GET /rf-params` response.
+
+_NOTE:_ Every field is required. The handler reads each field unconditionally,
+so a partial body yields undefined values — fetch the current parameters with
+`GET /rf-params`, modify, then `POST` the complete object. Changing these can
+break pairing with the transmitter (re-pair to recover).
+
+### POST /cmd
+
+Issues a control command. The `command` field selects the action:
+
+| `command` | Effect                                | Extra fields                                                                 |
+| --------- | ------------------------------------- | ---------------------------------------------------------------------------- |
+| `startTx` | Begin transmitting                    | `message` (string) and `repeatInterval` (ms, `0` = send once), both optional |
+| `stopTx`  | Stop transmitting                     | —                                                                            |
+| `startRx` | Begin receiving                       | —                                                                            |
+| `stopRx`  | Stop receiving                        | —                                                                            |
+| `unpair`  | Unpair / re-sync with the transmitter | —                                                                            |
+
+Request:
+
+```json
+{
+  "command": "startTx",
+  "message": "0.0.0|...",
+  "repeatInterval": 1000
+}
+```
+
+An unknown `command` returns `400 Bad Request`.
+
+### GET /wlan-config
+
+Returns the current WLAN configuration.
+
+Response:
+
+```json
+{
+  "mode": 1,
+  "authType": 3,
+  "ssid": "my_network",
+  "username": "",
+  "password": ""
+}
+```
+
+`mode`: `1` = Client, `2` = Access Point. `authType`: `0` = Open, `3` =
+WPA2/WPA3 Pre-Shared Key, `5` = WPA2/WPA3 Enterprise. `username` applies only to
+Enterprise.
+
+_NOTE:_ The password is never returned — this field is always blank in the
+response.
+
+### POST /wlan-config
+
+Sets the WLAN configuration. The request body has the same shape as the
+`GET /wlan-config` response (include `password`). Applying a new configuration
+causes the device to reconnect.
+
+### GET /mqtt-config
+
+Returns the current MQTT configuration.
+
+Response:
+
+```json
+{
+  "uri": "mqtt://homeassistant.local",
+  "identity": "",
+  "username": "smoke",
+  "password": "secret",
+  "ca_cert": "",
+  "client_cert": "",
+  "client_key": "",
+  "cert_auth": false,
+  "enabled": true,
+  "ha_discovery": true,
+  "ha_base_topic": "homeassistant",
+  "ha_status_topic": "homeassistant/status",
+  "ha_birth_payload": "online",
+  "state_topic": "homeassistant/smoke-x/state"
+}
+```
+
+`cert_auth` enables client-certificate authentication (uses `client_cert` /
+`client_key`); `ha_discovery` enables Home Assistant MQTT discovery.
+
+### POST /mqtt-config
+
+Sets the MQTT configuration. The request body accepts the same fields as the
+`GET /mqtt-config` response.
