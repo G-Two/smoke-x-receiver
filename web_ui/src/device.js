@@ -45,6 +45,7 @@ async function poll() {
       loaded.value = true
     }
   }
+  clearTimeout(timer)
   timer = setTimeout(poll, isPaired.value ? SLOW_MS : FAST_MS)
 }
 

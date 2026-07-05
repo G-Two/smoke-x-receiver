@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref } from "vue"
 import { togglePasswordVisibility } from "../formkit-password"
 
 const clientCertAuth = ref(false)
@@ -33,15 +33,19 @@ const HADiscovery = ref(false)
       <FormKit id="identity" type="text" name="identity" label="Identity" />
       <FormKit id="username" type="text" name="username" label="Username" />
       <FormKit
-id="password" type="password" name="password" label="Password"
+        id="password"
+        type="password"
+        name="password"
+        label="Password"
         suffix-icon="eyeClosed"
-        @suffix-icon-click="togglePasswordVisibility" />
-        <FormKit
-      id="use_tls"
-      v-model="useTLS"
-      type="checkbox"
-      label="Use TLS"
-      name="use_tls"
+        @suffix-icon-click="togglePasswordVisibility"
+      />
+      <FormKit
+        id="use_tls"
+        v-model="useTLS"
+        type="checkbox"
+        label="Use TLS"
+        name="use_tls"
       />
       <FormKit
        v-show="useTLS"
