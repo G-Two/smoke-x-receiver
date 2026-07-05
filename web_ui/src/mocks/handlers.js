@@ -129,7 +129,7 @@ export default [
     )
   }),
   rest.post("/mqtt-config", (req, res, ctx) => {
-    return res(ctx.delay(300), ctx.json({ success: true }))
+    return res(ctx.delay(300), ctx.text("OK"))
   }),
   rest.get("/rf-params", (req, res, ctx) => {
     return res(
@@ -149,9 +149,9 @@ export default [
     )
   }),
   rest.post("/rf-params", (req, res, ctx) => {
-    return res(ctx.delay(300), ctx.json({ success: true }))
+    return res(ctx.delay(300), ctx.text("OK"))
   }),
   rest.post("/cmd", (req, res, ctx) => {
-    return res(ctx.delay(300), ctx.json({ success: true }))
+    return res(ctx.delay(300), ctx.text("OK"))
   }),
 ]

@@ -107,8 +107,14 @@ export default {
   },
   methods: {
     async sendToServer(fields) {
-      fields.authType = parseInt(fields.authType)
-      fields.mode = parseInt(fields.mode)
+      const authType = parseInt(fields.authType, 10)
+      const mode = parseInt(fields.mode, 10)
+      if (!Number.isFinite(authType) || !Number.isFinite(mode)) {
+        notify("Invalid WLAN mode/security selection", "error")
+        return
+      }
+      fields.authType = authType
+      fields.mode = mode
       // Clear hidden credential fields so stale values are not submitted
       if (fields.authType !== 5) {
         fields.username = ""
