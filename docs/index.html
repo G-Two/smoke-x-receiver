@@ -47,29 +47,25 @@
     ></script>
     <script type="module">
       import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
-      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       mermaid.initialize({
         startOnLoad: true,
-        theme: isDark ? "dark" : "default",
+        theme: "dark",
       });
     </script>
     <style>
       :root {
-        color-scheme: light dark;
-        --fg: #1a1a1a;
-        --muted: #6a6a6a;
-        --accent: #c0392b;
-        --bg-soft: rgba(127, 127, 127, 0.08);
-        --border: rgba(127, 127, 127, 0.25);
+        /* Dark theme aligned with the web UI's dark mode
+           (see web_ui/src/styles/theme.css). */
+        color-scheme: dark;
+        background: var(--bg);
+        --bg: #16181d;
+        --fg: #e6e8ec;
+        --muted: #99a3b1;
+        --accent: #f59e0b; /* brand amber */
+        --bg-soft: rgba(255, 255, 255, 0.05);
+        --border: rgba(255, 255, 255, 0.1);
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
           Helvetica, sans-serif;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --fg: #e6e6e6;
-          --muted: #9c9c9c;
-          --accent: #ff7a6e;
-        }
       }
       * {
         box-sizing: border-box;
@@ -116,7 +112,7 @@
         border-radius: 6px;
         border: 1px solid var(--accent);
         background: var(--accent);
-        color: white;
+        color: #16181d; /* dark text on amber for contrast */
         cursor: pointer;
       }
       .install-button:hover {
