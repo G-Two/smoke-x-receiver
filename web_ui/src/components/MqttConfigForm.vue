@@ -184,8 +184,26 @@ export default {
   },
   methods: {
     async sendToServer(fields) {
+      const mqttConfig = { ...fields }
+
+      if (mqttConfig.use_tls) {
+        if (typeof mqttConfig.uri === "string") {
+          mqttConfig.uri = mqttConfig.uri.replace(/^mqtt:\/\//i, "mqtts://")
+        }
+      } else {
+        if (typeof mqttConfig.uri === "string") {
+          mqttConfig.uri = mqttConfig.uri.replace(/^mqtts:\/\//i, "mqtt://")
+        }
+        mqttConfig.ca_cert = ""
+        mqttConfig.cert_auth = false
+        mqttConfig.client_cert = ""
+        mqttConfig.client_key = ""
+      }
+
+      delete mqttConfig.use_tls
+
       try {
-        await postJSON("mqtt-config", fields)
+        await postJSON("mqtt-config", mqttConfig)
         notify("MQTT settings saved")
       } catch (error) {
         notify("Failed to save MQTT settings", "error")
