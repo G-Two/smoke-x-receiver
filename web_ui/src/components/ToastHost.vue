@@ -12,7 +12,10 @@ import { toasts, dismiss } from "../toasts"
         :class="`toast-${t.type}`"
         :role="t.type === 'error' ? 'alert' : 'status'"
         :aria-live="t.type === 'error' ? 'assertive' : 'polite'"
+        tabindex="0"
         @click="dismiss(t.id)"
+        @keydown.enter="dismiss(t.id)"
+        @keydown.space.prevent="dismiss(t.id)"
       >
         {{ t.message }}
       </div>

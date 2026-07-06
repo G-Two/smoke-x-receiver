@@ -11,7 +11,8 @@ const mql = window.matchMedia("(prefers-color-scheme: dark)")
 
 function stored() {
   try {
-    return localStorage.getItem(KEY) || "auto"
+    const pref = localStorage.getItem(KEY)
+    return pref === "light" || pref === "dark" ? pref : "auto"
   } catch (e) {
     return "auto"
   }
