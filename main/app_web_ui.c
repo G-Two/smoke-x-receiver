@@ -107,6 +107,8 @@ static esp_err_t set_content_type_from_file(httpd_req_t *req,
         type = "image/x-icon";
     } else if (CHECK_FILE_EXTENSION(filepath, ".svg.gz")) {
         type = "text/xml";
+    } else if (CHECK_FILE_EXTENSION(filepath, ".webmanifest.gz")) {
+        type = "application/manifest+json";
     }
 
     return httpd_resp_set_type(req, type);
@@ -125,8 +127,17 @@ static esp_err_t rest_common_get_handler(httpd_req_t *req) {
         strlcat(filepath, "/index.html", sizeof(filepath));
     } else {
         strlcat(filepath, req->uri, sizeof(filepath));
-        // filenames other than index.html are hashed, so cache for a long time
-        httpd_resp_set_hdr(req, "Cache-Control", "max-age=604800");
+        // hashed build outputs are immutable; stable-name assets (e.g. the PWA
+        // manifest, service worker, and icons) must not receive a long-lived
+        // cache so browsers can detect updates without a cache-name bump
+        if (CHECK_FILE_EXTENSION(req->uri, ".webmanifest") ||
+            !strcmp(req->uri, "/sw.js") || !strcmp(req->uri, "/favicon.ico") ||
+            (strncmp(req->uri, "/icon-", strlen("/icon-")) == 0 &&
+             CHECK_FILE_EXTENSION(req->uri, ".png"))) {
+            httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+        } else {
+            httpd_resp_set_hdr(req, "Cache-Control", "max-age=604800");
+        }
     }
     strlcat(filepath, ".gz", sizeof(filepath));
     int fd = open(filepath, O_RDONLY, 0);

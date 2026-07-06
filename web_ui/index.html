@@ -4,7 +4,36 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="favicon.ico" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: dark)"
+      content="#16181d"
+    />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: light)"
+      content="#f5f6f8"
+    />
     <title>Smoke X Receiver</title>
+    <script>
+      // Set the theme before first paint to avoid a flash of the wrong theme.
+      ;(function () {
+        try {
+          var p = localStorage.getItem("theme")
+          var dark =
+            p === "dark" ||
+            ((!p || p === "auto") &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches)
+          document.documentElement.setAttribute(
+            "data-theme",
+            dark ? "dark" : "light"
+          )
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>

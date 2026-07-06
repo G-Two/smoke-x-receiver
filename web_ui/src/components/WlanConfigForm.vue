@@ -1,13 +1,16 @@
 <script setup>
-const handleIconClick = (node) => {
-  node.props.suffixIcon = node.props.suffixIcon === 'eye' ? 'eyeClosed' : 'eye'
-  node.props.type = node.props.type === 'password' ? 'text' : 'password'
-}
+import { togglePasswordVisibility } from "../formkit-password"
 </script>
 
 <template>
   <div id="wlan-config-form">
-    <loading v-model:active="isLoading" />
+    <loading
+      v-model:active="isLoading"
+      color="var(--brand-amber)"
+      background-color="var(--bg)"
+      :opacity="0.9"
+      :z-index="490"
+    />
     <FormKit v-slot="{ value }" type="form" @submit="sendToServer">
       <FormKit
         id="mode"
@@ -49,32 +52,33 @@ const handleIconClick = (node) => {
         validation="required"
       />
       <FormKit
+        v-show="value.authType == 5"
         id="username"
-        :disabled="value.authType != 5"
         type="text"
         name="username"
         label="Username"
-        :validation="value.authType != 5 ? 'optional' : 'required'"
+        :validation="value.authType == 5 ? 'required' : 'optional'"
       />
       <FormKit
+        v-show="value.authType != 0"
         id="password"
-        :disabled="value.authType == 0"
         type="password"
         name="password"
         label="Password"
-        :validation="value.authType == 0 ? 'optional' : 'required'"
+        :validation="value.authType != 0 ? 'required' : 'optional'"
         suffix-icon="eyeClosed"
-        @suffix-icon-click="handleIconClick"
+        @suffix-icon-click="togglePasswordVisibility"
       />
     </FormKit>
   </div>
 </template>
 
 <script>
-import * as axios from "axios"
+import { getJSON, postJSON } from "../api"
 import { getNode } from "@formkit/core"
 import Loading from "vue-loading-overlay"
 import "vue-loading-overlay/dist/css/index.css"
+import { notify } from "../toasts"
 
 export default {
   name: "WlanConfigForm",
@@ -86,30 +90,43 @@ export default {
       isLoading: true,
     }
   },
-  mounted: async function () {
-    axios
-      .get("wlan-config")
-      .then((res) => {
-        console.log(res)
-        getNode("mode").input(res.data.mode)
-        getNode("authType").input(res.data.authType)
-        getNode("ssid").input(res.data.ssid)
-        getNode("username").input(res.data.username)
-        getNode("password").input(res.data.password)
+  mounted: function () {
+    getJSON("wlan-config")
+      .then((data) => {
+        getNode("mode").input(data.mode)
+        getNode("authType").input(data.authType)
+        getNode("ssid").input(data.ssid)
+        getNode("username").input(data.username)
+        getNode("password").input(data.password)
         this.isLoading = false
       })
-      .catch((error) => {
-        console.log(error)
+      .catch(() => {
+        this.isLoading = false
+        notify("Failed to load WLAN settings", "error")
       })
   },
   methods: {
     async sendToServer(fields) {
-      if (confirm("Commit these settings to NVRAM?")) {
-        fields.authType=parseInt(fields.authType)
-        fields.mode=parseInt(fields.mode)
-        axios.post("wlan-config", fields).catch((error) => {
-          console.log(error)
-        })
+      const authType = parseInt(fields.authType, 10)
+      const mode = parseInt(fields.mode, 10)
+      if (!Number.isFinite(authType) || !Number.isFinite(mode)) {
+        notify("Invalid WLAN mode/security selection", "error")
+        return
+      }
+      fields.authType = authType
+      fields.mode = mode
+      // Clear hidden credential fields so stale values are not submitted
+      if (fields.authType !== 5) {
+        fields.username = ""
+      }
+      if (fields.authType === 0) {
+        fields.password = ""
+      }
+      try {
+        await postJSON("wlan-config", fields)
+        notify("WLAN settings saved")
+      } catch (error) {
+        notify("Failed to save WLAN settings", "error")
       }
     },
   },

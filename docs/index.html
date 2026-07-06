@@ -3,6 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Favicon — the Smoke X Receiver thermometer icon. -->
+    <link rel="icon" href="favicon.ico" sizes="any" />
+    <link rel="icon" type="image/svg+xml" href="icon.svg" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+
     <title>
       ESP32 Smoke X Receiver — Browser-flash firmware for ThermoWorks Smoke
       X2/X4
@@ -41,29 +47,25 @@
     ></script>
     <script type="module">
       import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
-      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       mermaid.initialize({
         startOnLoad: true,
-        theme: isDark ? "dark" : "default",
+        theme: "dark",
       });
     </script>
     <style>
       :root {
-        color-scheme: light dark;
-        --fg: #1a1a1a;
-        --muted: #6a6a6a;
-        --accent: #c0392b;
-        --bg-soft: rgba(127, 127, 127, 0.08);
-        --border: rgba(127, 127, 127, 0.25);
+        /* Dark theme aligned with the web UI's dark mode
+           (see web_ui/src/styles/theme.css). */
+        color-scheme: dark;
+        background: var(--bg);
+        --bg: #16181d;
+        --fg: #e6e8ec;
+        --muted: #99a3b1;
+        --accent: #f59e0b; /* brand amber */
+        --bg-soft: rgba(255, 255, 255, 0.05);
+        --border: rgba(255, 255, 255, 0.1);
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
           Helvetica, sans-serif;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --fg: #e6e6e6;
-          --muted: #9c9c9c;
-          --accent: #ff7a6e;
-        }
       }
       * {
         box-sizing: border-box;
@@ -110,7 +112,7 @@
         border-radius: 6px;
         border: 1px solid var(--accent);
         background: var(--accent);
-        color: white;
+        color: #16181d; /* dark text on amber for contrast */
         cursor: pointer;
       }
       .install-button:hover {
@@ -302,7 +304,7 @@
     <div class="screenshots">
       <figure>
         <img
-          src="https://github.com/G-Two/smoke-x-receiver/assets/7310260/20c633df-3ff2-4824-a4d0-355b7b6bf542"
+          src="https://github.com/user-attachments/assets/f9a712d1-65fb-489f-a3a5-32739f200272"
           alt="Built-in web UI showing temperature history"
         />
         <figcaption>Built-in web UI</figcaption>
@@ -313,13 +315,6 @@
           alt="Home Assistant device card"
         />
         <figcaption>Home Assistant view</figcaption>
-      </figure>
-      <figure>
-        <img
-          src="https://github.com/G-Two/smoke-x-receiver/assets/7310260/87173f91-347e-41b0-bbb0-df5d6ebd69d9"
-          alt="Grafana dashboard plotting cook temperature over time"
-        />
-        <figcaption>Grafana dashboard</figcaption>
       </figure>
     </div>
 

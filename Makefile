@@ -244,9 +244,10 @@ clean-heltec-v3:
 
 # --- Web UI ---
 
-# mock-web-ui: Run web UI dev server with mocked API (./mock_web_ui.sh)
+# mock-web-ui: Run web UI dev server with mocked API
 mock-web-ui:
-	./mock_web_ui.sh
+	npm install --prefix web_ui
+	npm run dev --prefix web_ui -- --host
 
 # build-web-ui: Build production web assets for ESP32 flash
 build-web-ui:

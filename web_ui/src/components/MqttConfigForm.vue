@@ -1,19 +1,21 @@
 <script setup>
-import { ref } from 'vue'
+import { ref } from "vue"
+import { togglePasswordVisibility } from "../formkit-password"
 
 const clientCertAuth = ref(false)
 const useTLS = ref(false)
 const HADiscovery = ref(false)
-
-const handleIconClick = (node) => {
-  node.props.suffixIcon = node.props.suffixIcon === 'eye' ? 'eyeClosed' : 'eye'
-  node.props.type = node.props.type === 'password' ? 'text' : 'password'
-}
 </script>
 
 <template>
   <div id="mqtt-config-form">
-    <loading v-model:active="isLoading" />
+    <loading
+      v-model:active="isLoading"
+      color="var(--brand-amber)"
+      background-color="var(--bg)"
+      :opacity="0.9"
+      :z-index="490"
+    />
     <FormKit type="form" @submit="sendToServer">
       <FormKit
         id="enabled"
@@ -31,15 +33,19 @@ const handleIconClick = (node) => {
       <FormKit id="identity" type="text" name="identity" label="Identity" />
       <FormKit id="username" type="text" name="username" label="Username" />
       <FormKit
-id="password" type="password" name="password" label="Password"
+        id="password"
+        type="password"
+        name="password"
+        label="Password"
         suffix-icon="eyeClosed"
-        @suffix-icon-click="handleIconClick" />
-        <FormKit
-      id="use_tls"
-      v-model="useTLS"
-      type="checkbox"
-      label="Use TLS"
-      name="use_tls"
+        @suffix-icon-click="togglePasswordVisibility"
+      />
+      <FormKit
+        id="use_tls"
+        v-model="useTLS"
+        type="checkbox"
+        label="Use TLS"
+        name="use_tls"
       />
       <FormKit
        v-show="useTLS"
@@ -131,10 +137,11 @@ Paste client key in PEM format
 </template>
 
 <script>
-import * as axios from "axios"
+import { getJSON, postJSON } from "../api"
 import { getNode } from "@formkit/core"
 import Loading from "vue-loading-overlay"
 import "vue-loading-overlay/dist/css/index.css"
+import { notify } from "../toasts"
 
 export default {
   name: "MqttConfigForm",
@@ -146,38 +153,60 @@ export default {
       isLoading: true,
     }
   },
-  mounted: async function () {
-    axios
-      .get("mqtt-config")
-      .then((res) => {
-        console.log(res)
-        getNode("enabled").input(res.data.enabled)
-        getNode("uri").input(res.data.uri)
-        getNode("identity").input(res.data.identity)
-        getNode("username").input(res.data.username)
-        getNode("password").input(res.data.password)
-        getNode("ca_cert").input(res.data.ca_cert)
-        getNode("cert_auth").input(res.data.cert_auth)
-        getNode("client_cert").input(res.data.client_cert)
-        getNode("client_key").input(res.data.client_key)
-        getNode("enabled").input(res.data.enabled)
-        getNode("ha_discovery").input(res.data.ha_discovery)
-        getNode("ha_base_topic").input(res.data.ha_base_topic)
-        getNode("ha_status_topic").input(res.data.ha_status_topic)
-        getNode("ha_birth_payload").input(res.data.ha_birth_payload)
-        getNode("state_topic").input(res.data.state_topic)
+  mounted: function () {
+    getJSON("mqtt-config")
+      .then((data) => {
+        const hasTLSConfig =
+          (typeof data.uri === "string" &&
+            data.uri.toLowerCase().startsWith("mqtts://")) ||
+          !!(data.ca_cert || data.cert_auth || data.client_cert || data.client_key)
+        getNode("enabled").input(data.enabled)
+        getNode("uri").input(data.uri)
+        getNode("identity").input(data.identity)
+        getNode("username").input(data.username)
+        getNode("password").input(data.password)
+        getNode("use_tls").input(hasTLSConfig)
+        getNode("ca_cert").input(data.ca_cert)
+        getNode("cert_auth").input(data.cert_auth)
+        getNode("client_cert").input(data.client_cert)
+        getNode("client_key").input(data.client_key)
+        getNode("ha_discovery").input(data.ha_discovery)
+        getNode("ha_base_topic").input(data.ha_base_topic)
+        getNode("ha_status_topic").input(data.ha_status_topic)
+        getNode("ha_birth_payload").input(data.ha_birth_payload)
+        getNode("state_topic").input(data.state_topic)
         this.isLoading = false
       })
-      .catch((error) => {
-        console.log(error)
+      .catch(() => {
+        this.isLoading = false
+        notify("Failed to load MQTT settings", "error")
       })
   },
   methods: {
     async sendToServer(fields) {
-      if (confirm("Commit these settings to NVRAM?")) {
-        axios.post("mqtt-config", fields).catch((error) => {
-          console.log(error)
-        })
+      const mqttConfig = { ...fields }
+
+      if (mqttConfig.use_tls) {
+        if (typeof mqttConfig.uri === "string") {
+          mqttConfig.uri = mqttConfig.uri.replace(/^mqtt:\/\//i, "mqtts://")
+        }
+      } else {
+        if (typeof mqttConfig.uri === "string") {
+          mqttConfig.uri = mqttConfig.uri.replace(/^mqtts:\/\//i, "mqtt://")
+        }
+        mqttConfig.ca_cert = ""
+        mqttConfig.cert_auth = false
+        mqttConfig.client_cert = ""
+        mqttConfig.client_key = ""
+      }
+
+      delete mqttConfig.use_tls
+
+      try {
+        await postJSON("mqtt-config", mqttConfig)
+        notify("MQTT settings saved")
+      } catch (error) {
+        notify("Failed to save MQTT settings", "error")
       }
     },
   },
@@ -185,13 +214,15 @@ export default {
 </script>
 
 <style>
-#ca_cert {
-  font-family: "Courier New", Courier, monospace;
+/* PEM certificates and keys are far easier to read and paste in a fixed-width
+   terminal font. Applies to all three cert/key textareas so they match (the
+   CA, client cert, and client key boxes were previously inconsistent). */
+#mqtt-config-form textarea {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono",
+    "Courier New", monospace;
+  font-size: 0.85em;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-size: medium;
-  font-weight: bold;
-  margin: 0;
-  text-align: justify;
 }
 </style>
