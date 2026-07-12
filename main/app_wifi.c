@@ -32,6 +32,11 @@ static TaskHandle_t ip_recovery_task_handle = NULL;
  * station is associated but has no IP address. */
 #define IP_RECOVERY_RETRY_MS 60000
 
+/* How long to stay in fallback AP mode before retrying the saved STA
+ * configuration. */
+#define STA_FALLBACK_RETRY_MS (5 * 60 * 1000)
+static TaskHandle_t sta_retry_task_handle = NULL;
+
 static void apply_params(const app_wifi_params_t *params);
 
 /* Recovery for the associated-but-no-IP state: a DHCP lease can expire
@@ -220,6 +225,38 @@ void app_wifi_get_params(app_wifi_params_t *params) {
     memcpy(params, &app_wifi_params, sizeof(app_wifi_params_t));
 }
 
+/* While parked in fallback AP mode, periodically retry the saved STA
+ * configuration so a network that was merely down at boot (power outage
+ * where the router recovers minutes after the ESP32) is rejoined without
+ * a manual power cycle. Postponed while a client is using the config AP
+ * so it doesn't yank the network out from under a provisioning session. */
+static void sta_retry_task(void *arg) {
+    (void)arg;
+
+    while (1) {
+        vTaskDelay(pdMS_TO_TICKS(STA_FALLBACK_RETRY_MS));
+        wifi_sta_list_t sta_list;
+        if (esp_wifi_ap_get_sta_list(&sta_list) == ESP_OK &&
+            sta_list.num > 0) {
+            ESP_LOGI(TAG, "Config AP in use, postponing STA retry");
+            continue;
+        }
+        break;
+    }
+
+    ESP_LOGI(TAG, "Retrying saved STA configuration");
+    sta_retry_task_handle = NULL;
+    apply_params(&app_wifi_params);
+    vTaskDelete(NULL);
+}
+
+static void cancel_sta_retry(void) {
+    if (sta_retry_task_handle) {
+        vTaskDelete(sta_retry_task_handle);
+        sta_retry_task_handle = NULL;
+    }
+}
+
 static void sta_fail_detect(void *arg) {
     (void)arg;
     TickType_t start_tick = xTaskGetTickCount();
@@ -232,6 +269,19 @@ static void sta_fail_detect(void *arg) {
                 "Failed to connect to Wi-Fi AP, reverting to default AP mode");
             app_wifi_init_ap(CONFIG_DEFAULT_WIFI_AP_SSID,
                              CONFIG_DEFAULT_WIFI_AP_PASSWORD);
+            /* The saved STA config may only have been unreachable
+             * momentarily (e.g. AP still booting); keep retrying it in
+             * the background rather than requiring a power cycle. */
+            if (app_wifi_params.valid &&
+                app_wifi_params.mode == WIFI_MODE_STA &&
+                !sta_retry_task_handle) {
+                if (xTaskCreate(&sta_retry_task, "app_wifi_sta_retry", 4096,
+                                NULL, 5,
+                                &sta_retry_task_handle) != pdPASS) {
+                    sta_retry_task_handle = NULL;
+                    ESP_LOGE(TAG, "Failed to create STA retry task");
+                }
+            }
             break;
         } else if (xEventGroupGetBits(wifi_event_group) & CONNECTED_BIT) {
             break;
@@ -258,6 +308,7 @@ static void cancel_sta_fail_detect(void) {
  * (runtime reconfigure path). */
 static void apply_params(const app_wifi_params_t *params) {
     cancel_sta_fail_detect();
+    cancel_sta_retry();
 
     if (params->mode == WIFI_MODE_STA) {
         switch (params->auth_type) {
@@ -425,8 +476,9 @@ esp_err_t app_wifi_try_connect(const char *ssid, const char *password,
     /* A watchdog from a previous STA attempt (e.g. boot with stale
      * credentials) would see CONNECTED_BIT cleared below and yank the
      * netif out from under us mid-connect. Kill it first, the same way
-     * apply_params does. */
+     * apply_params does. Likewise a pending fallback STA retry. */
     cancel_sta_fail_detect();
+    cancel_sta_retry();
 
     /* Tear down whatever Wi-Fi mode is currently active so we can re-init
      * cleanly as STA. esp_wifi_stop() is idempotent; the netif may not yet
