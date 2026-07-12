@@ -139,8 +139,11 @@ static void app_wifi_init_sta(const char *ssid, const char *password) {
         strncpy((char *)wifi_config.sta.password, password, MAX_PASSPHRASE_LEN);
         ESP_LOGI(TAG, "Wifi config password: %s", wifi_config.sta.password);
     }
+    /* PMF-capable but not required: many consumer APs (especially mesh
+     * systems in WPA2 mode) don't support 802.11w at all, and a station
+     * that requires it can never associate with them. */
     wifi_config.sta.pmf_cfg.capable = true;
-    wifi_config.sta.pmf_cfg.required = true;
+    wifi_config.sta.pmf_cfg.required = false;
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
@@ -415,7 +418,7 @@ esp_err_t app_wifi_try_connect(const char *ssid, const char *password,
     strncpy((char *)wifi_config.sta.ssid, ssid, MAX_SSID_LEN);
     strncpy((char *)wifi_config.sta.password, password, MAX_PASSPHRASE_LEN);
     wifi_config.sta.pmf_cfg.capable = true;
-    wifi_config.sta.pmf_cfg.required = true;
+    wifi_config.sta.pmf_cfg.required = false;
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
