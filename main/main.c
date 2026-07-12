@@ -52,9 +52,10 @@ void smoke_x_event_handler(void* handler_arg, esp_event_base_t base,
 void run_when_disconnected(void* handler_arg, esp_event_base_t base, int32_t id,
                            void* event_data) {
     ESP_LOGI(TAG, "Wi-Fi connection lost");
-    if (app_mqtt_is_connected()) {
-        app_mqtt_stop();
-    }
+    /* Stop regardless of connection state: after the broker drops,
+     * connected is already false but the client object still exists and
+     * must be torn down before the next GOT_IP creates a fresh one. */
+    app_mqtt_stop();
 }
 
 void run_when_ip_addr_obtained(void* handler_arg, esp_event_base_t base,
