@@ -26,8 +26,46 @@ static const int CONNECTED_BIT = BIT0;
 static app_wifi_params_t app_wifi_params;
 static bool wifi_inited = false;
 static TaskHandle_t sta_fail_detect_task = NULL;
+static TaskHandle_t ip_recovery_task_handle = NULL;
+
+/* How long to wait between forced reassociation attempts while the
+ * station is associated but has no IP address. */
+#define IP_RECOVERY_RETRY_MS 60000
+
+/* How long to stay in fallback AP mode before retrying the saved STA
+ * configuration. */
+#define STA_FALLBACK_RETRY_MS (5 * 60 * 1000)
+static TaskHandle_t sta_retry_task_handle = NULL;
 
 static void apply_params(const app_wifi_params_t *params);
+
+/* Recovery for the associated-but-no-IP state: a DHCP lease can expire
+ * without any Wi-Fi disconnect event when the AP keeps the association
+ * alive but stops forwarding traffic (observed with mesh APs after a node
+ * restart). lwIP keeps broadcasting DISCOVER through the dead link forever,
+ * so the only way back is to force a fresh association, which rebuilds the
+ * link and re-runs DHCP. Runs until an address is obtained or the device
+ * leaves STA mode. */
+static void ip_recovery_task(void *arg) {
+    (void)arg;
+    int attempt = 0;
+
+    while (!(xEventGroupGetBits(wifi_event_group) & CONNECTED_BIT)) {
+        wifi_mode_t mode;
+        if (esp_wifi_get_mode(&mode) != ESP_OK || mode != WIFI_MODE_STA) {
+            break;
+        }
+        attempt++;
+        ESP_LOGW(TAG, "No IP address, forcing reassociation (attempt %d)",
+                 attempt);
+        /* STA_DISCONNECTED handler issues the reconnect */
+        esp_wifi_disconnect();
+        vTaskDelay(pdMS_TO_TICKS(IP_RECOVERY_RETRY_MS));
+    }
+
+    ip_recovery_task_handle = NULL;
+    vTaskDelete(NULL);
+}
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                                int32_t event_id, void *event_data) {
@@ -43,6 +81,16 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
         xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_LOST_IP) {
+        ESP_LOGW(TAG, "IP address lost");
+        xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+        if (!ip_recovery_task_handle) {
+            if (xTaskCreate(&ip_recovery_task, "app_wifi_ip_recovery", 4096,
+                            NULL, 5, &ip_recovery_task_handle) != pdPASS) {
+                ip_recovery_task_handle = NULL;
+                ESP_LOGE(TAG, "Failed to create IP recovery task");
+            }
+        }
     }
 
     // AP
@@ -83,6 +131,8 @@ static void ensure_wifi_inited(void) {
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
                                                &wifi_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
+                                               &wifi_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_LOST_IP,
                                                &wifi_event_handler, NULL));
     wifi_inited = true;
 }
@@ -178,6 +228,38 @@ void app_wifi_get_params(app_wifi_params_t *params) {
     memcpy(params, &app_wifi_params, sizeof(app_wifi_params_t));
 }
 
+/* While parked in fallback AP mode, periodically retry the saved STA
+ * configuration so a network that was merely down at boot (power outage
+ * where the router recovers minutes after the ESP32) is rejoined without
+ * a manual power cycle. Postponed while a client is using the config AP
+ * so it doesn't yank the network out from under a provisioning session. */
+static void sta_retry_task(void *arg) {
+    (void)arg;
+
+    while (1) {
+        vTaskDelay(pdMS_TO_TICKS(STA_FALLBACK_RETRY_MS));
+        wifi_sta_list_t sta_list;
+        if (esp_wifi_ap_get_sta_list(&sta_list) == ESP_OK &&
+            sta_list.num > 0) {
+            ESP_LOGI(TAG, "Config AP in use, postponing STA retry");
+            continue;
+        }
+        break;
+    }
+
+    ESP_LOGI(TAG, "Retrying saved STA configuration");
+    sta_retry_task_handle = NULL;
+    apply_params(&app_wifi_params);
+    vTaskDelete(NULL);
+}
+
+static void cancel_sta_retry(void) {
+    if (sta_retry_task_handle) {
+        vTaskDelete(sta_retry_task_handle);
+        sta_retry_task_handle = NULL;
+    }
+}
+
 static void sta_fail_detect(void *arg) {
     (void)arg;
     TickType_t start_tick = xTaskGetTickCount();
@@ -190,6 +272,19 @@ static void sta_fail_detect(void *arg) {
                 "Failed to connect to Wi-Fi AP, reverting to default AP mode");
             app_wifi_init_ap(CONFIG_DEFAULT_WIFI_AP_SSID,
                              CONFIG_DEFAULT_WIFI_AP_PASSWORD);
+            /* The saved STA config may only have been unreachable
+             * momentarily (e.g. AP still booting); keep retrying it in
+             * the background rather than requiring a power cycle. */
+            if (app_wifi_params.valid &&
+                app_wifi_params.mode == WIFI_MODE_STA &&
+                !sta_retry_task_handle) {
+                if (xTaskCreate(&sta_retry_task, "app_wifi_sta_retry", 4096,
+                                NULL, 5,
+                                &sta_retry_task_handle) != pdPASS) {
+                    sta_retry_task_handle = NULL;
+                    ESP_LOGE(TAG, "Failed to create STA retry task");
+                }
+            }
             break;
         } else if (xEventGroupGetBits(wifi_event_group) & CONNECTED_BIT) {
             break;
@@ -216,6 +311,7 @@ static void cancel_sta_fail_detect(void) {
  * (runtime reconfigure path). */
 static void apply_params(const app_wifi_params_t *params) {
     cancel_sta_fail_detect();
+    cancel_sta_retry();
 
     if (params->mode == WIFI_MODE_STA) {
         switch (params->auth_type) {
@@ -383,8 +479,9 @@ esp_err_t app_wifi_try_connect(const char *ssid, const char *password,
     /* A watchdog from a previous STA attempt (e.g. boot with stale
      * credentials) would see CONNECTED_BIT cleared below and yank the
      * netif out from under us mid-connect. Kill it first, the same way
-     * apply_params does. */
+     * apply_params does. Likewise a pending fallback STA retry. */
     cancel_sta_fail_detect();
+    cancel_sta_retry();
 
     /* Tear down whatever Wi-Fi mode is currently active so we can re-init
      * cleanly as STA. esp_wifi_stop() is idempotent; the netif may not yet
