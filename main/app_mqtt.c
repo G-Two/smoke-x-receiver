@@ -286,6 +286,17 @@ static void update_client_status() {
 static esp_err_t init() {
     esp_err_t err;
 
+    /* A previous client can still exist here: on Wi-Fi loss the stop path
+     * is skipped when the broker connection had already dropped (connected
+     * is false), and the next GOT_IP lands back in init(). Overwriting the
+     * handle would leak a running client that fights this one for the
+     * broker session (same client id) and its heap is never returned. */
+    if (client) {
+        esp_mqtt_client_destroy(client);
+        client = NULL;
+        connected = false;
+    }
+
     err = load_config_from_nvs();
 
     if (!err & app_mqtt_params.enabled) {
