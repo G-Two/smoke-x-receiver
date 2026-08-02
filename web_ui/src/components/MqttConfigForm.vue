@@ -5,6 +5,8 @@ import { togglePasswordVisibility } from "../formkit-password"
 const clientCertAuth = ref(false)
 const useTLS = ref(false)
 const HADiscovery = ref(false)
+const uriPattern =
+  /^mqtts?:\/\/(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}|(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*)(?::\d{1,5})?\/?$/
 </script>
 
 <template>
@@ -28,7 +30,12 @@ const HADiscovery = ref(false)
         type="text"
         name="uri"
         label="MQTT Broker URI"
-        validation="required"
+        placeholder="mqtt://192.168.1.10:1883"
+        :validation="[['required'], ['matches', uriPattern]]"
+        :validation-messages="{
+          matches:
+            'Enter a full URI: mqtt:// or mqtts:// followed by a hostname or IP address, e.g. mqtt://192.168.1.10:1883',
+        }"
       />
       <FormKit id="identity" type="text" name="identity" label="Identity" />
       <FormKit id="username" type="text" name="username" label="Username" />
