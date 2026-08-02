@@ -3,9 +3,16 @@
 #include <fcntl.h>
 #include "esp_http_server.h"
 #include "esp_system.h"
+#include "esp_app_desc.h"
+#include "esp_chip_info.h"
+#include "esp_flash.h"
+#include "esp_heap_caps.h"
+#include "esp_mac.h"
+#include "esp_timer.h"
 #include "esp_log.h"
 #include "esp_spiffs.h"
 #include "esp_vfs.h"
+#include "nvs.h"
 #include "errno.h"
 #include "cJSON.h"
 #include "app_lora.h"
@@ -123,7 +130,7 @@ static esp_err_t rest_common_get_handler(httpd_req_t *req) {
     strlcpy(filepath, rest_context->base_path, sizeof(filepath));
     if (!strcmp(req->uri, "/") || !strcmp(req->uri, "/wlan") ||
         !strcmp(req->uri, "/pairing") || !strcmp(req->uri, "/mqtt") ||
-        !strcmp(req->uri, "/lora")) {
+        !strcmp(req->uri, "/lora") || !strcmp(req->uri, "/system")) {
         strlcat(filepath, "/index.html", sizeof(filepath));
     } else {
         strlcat(filepath, req->uri, sizeof(filepath));
@@ -567,6 +574,185 @@ static esp_err_t cmd_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+static const char *reset_reason_str(esp_reset_reason_t reason) {
+    switch (reason) {
+        case ESP_RST_POWERON:
+            return "Power-on";
+        case ESP_RST_EXT:
+            return "External pin";
+        case ESP_RST_SW:
+            return "Software";
+        case ESP_RST_PANIC:
+            return "Panic/exception";
+        case ESP_RST_INT_WDT:
+            return "Interrupt watchdog";
+        case ESP_RST_TASK_WDT:
+            return "Task watchdog";
+        case ESP_RST_WDT:
+            return "Other watchdog";
+        case ESP_RST_DEEPSLEEP:
+            return "Deep-sleep wake";
+        case ESP_RST_BROWNOUT:
+            return "Brownout";
+        case ESP_RST_SDIO:
+            return "SDIO";
+        default:
+            return "Unknown";
+    }
+}
+
+/* Handler exposing device firmware/build info and runtime health for the web
+   UI's System page (and the firmware-version footer). Read-only; safe to poll.
+ */
+static esp_err_t system_info_get_handler(httpd_req_t *req) {
+    httpd_resp_set_type(req, "application/json");
+    cJSON *root = cJSON_CreateObject();
+
+    /* Firmware / build */
+    const esp_app_desc_t *app = esp_app_get_description();
+    cJSON *fw = cJSON_AddObjectToObject(root, "firmware");
+    cJSON_AddStringToObject(fw, "version", app->version);
+    cJSON_AddStringToObject(fw, "project", app->project_name);
+    cJSON_AddStringToObject(fw, "idf", app->idf_ver);
+    cJSON_AddStringToObject(fw, "buildDate", app->date);
+    cJSON_AddStringToObject(fw, "buildTime", app->time);
+
+    /* Chip */
+    esp_chip_info_t chip;
+    esp_chip_info(&chip);
+    const char *model;
+    switch (chip.model) {
+        case CHIP_ESP32:
+            model = "ESP32";
+            break;
+        case CHIP_ESP32S2:
+            model = "ESP32-S2";
+            break;
+        case CHIP_ESP32S3:
+            model = "ESP32-S3";
+            break;
+        case CHIP_ESP32C3:
+            model = "ESP32-C3";
+            break;
+        case CHIP_ESP32C2:
+            model = "ESP32-C2";
+            break;
+        case CHIP_ESP32C6:
+            model = "ESP32-C6";
+            break;
+        case CHIP_ESP32H2:
+            model = "ESP32-H2";
+            break;
+        default:
+            model = "Unknown";
+            break;
+    }
+    uint8_t mac[6] = {0};
+    char mac_str[18];
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X", mac[0],
+             mac[1], mac[2], mac[3], mac[4], mac[5]);
+    cJSON *c = cJSON_AddObjectToObject(root, "chip");
+    cJSON_AddStringToObject(c, "model", model);
+    cJSON_AddNumberToObject(c, "revision", chip.revision);
+    cJSON_AddNumberToObject(c, "cores", chip.cores);
+    cJSON_AddStringToObject(c, "mac", mac_str);
+
+    /* Memory (internal heap) */
+    cJSON *mem = cJSON_AddObjectToObject(root, "memory");
+    cJSON_AddNumberToObject(mem, "heapFree", esp_get_free_heap_size());
+    cJSON_AddNumberToObject(mem, "heapMinFree",
+                            esp_get_minimum_free_heap_size());
+    cJSON_AddNumberToObject(mem, "heapTotal",
+                            heap_caps_get_total_size(MALLOC_CAP_INTERNAL));
+    cJSON_AddNumberToObject(
+        mem, "heapLargestBlock",
+        heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
+
+    /* Flash chip + web-asset (SPIFFS) partition usage */
+    cJSON *flash = cJSON_AddObjectToObject(root, "flash");
+    uint32_t flash_size = 0;
+    if (esp_flash_get_size(NULL, &flash_size) != ESP_OK) {
+        flash_size = 0;
+    }
+    cJSON_AddNumberToObject(flash, "chipSize", flash_size);
+    size_t spiffs_total = 0, spiffs_used = 0;
+    if (esp_spiffs_info(NULL, &spiffs_total, &spiffs_used) == ESP_OK) {
+        cJSON_AddNumberToObject(flash, "spiffsTotal", spiffs_total);
+        cJSON_AddNumberToObject(flash, "spiffsUsed", spiffs_used);
+    }
+
+    /* NVS (stores Wi-Fi/MQTT/pairing config) */
+    cJSON *nvs = cJSON_AddObjectToObject(root, "nvs");
+    nvs_stats_t nvs_stats;
+    if (nvs_get_stats(NULL, &nvs_stats) == ESP_OK) {
+        cJSON_AddBoolToObject(nvs, "ok", true);
+        cJSON_AddNumberToObject(nvs, "usedEntries", nvs_stats.used_entries);
+        cJSON_AddNumberToObject(nvs, "freeEntries", nvs_stats.free_entries);
+        cJSON_AddNumberToObject(nvs, "totalEntries", nvs_stats.total_entries);
+        cJSON_AddNumberToObject(nvs, "namespaceCount",
+                                nvs_stats.namespace_count);
+    } else {
+        cJSON_AddBoolToObject(nvs, "ok", false);
+    }
+
+    /* Wi-Fi link */
+    cJSON *wifi = cJSON_AddObjectToObject(root, "wifi");
+    bool ap_mode = app_wifi_is_ap_mode();
+    cJSON_AddStringToObject(wifi, "mode", ap_mode ? "AP" : "STA");
+    cJSON_AddBoolToObject(wifi, "connected", app_wifi_is_connected());
+    char ip_str[16];
+    if (app_wifi_get_ip_str(ip_str, sizeof(ip_str)) == ESP_OK) {
+        cJSON_AddStringToObject(wifi, "ip", ip_str);
+    }
+    app_wifi_params_t wifi_params;
+    app_wifi_get_params(&wifi_params);
+    cJSON_AddStringToObject(wifi, "ssid", wifi_params.ssid);
+    int8_t wifi_rssi;
+    uint8_t wifi_channel;
+    if (!ap_mode &&
+        app_wifi_get_sta_rssi(&wifi_rssi, &wifi_channel) == ESP_OK) {
+        cJSON_AddNumberToObject(wifi, "rssi", wifi_rssi);
+        cJSON_AddNumberToObject(wifi, "channel", wifi_channel);
+    } else {
+        cJSON_AddNullToObject(wifi, "rssi");
+        cJSON_AddNullToObject(wifi, "channel");
+    }
+
+    /* LoRa link (last received base-station packet) */
+    cJSON *lora = cJSON_AddObjectToObject(root, "lora");
+    app_lora_params_t lora_params;
+    app_lora_get_params(&lora_params);
+    cJSON_AddNumberToObject(lora, "frequency", lora_params.frequency);
+    int lora_rssi;
+    float lora_snr;
+    int64_t lora_age_ms;
+    if (app_lora_get_rx_status(&lora_rssi, &lora_snr, &lora_age_ms) == ESP_OK) {
+        cJSON_AddBoolToObject(lora, "everReceived", true);
+        cJSON_AddNumberToObject(lora, "rssi", lora_rssi);
+        cJSON_AddNumberToObject(lora, "snr", lora_snr);
+        cJSON_AddNumberToObject(lora, "ageMs", (double)lora_age_ms);
+    } else {
+        cJSON_AddBoolToObject(lora, "everReceived", false);
+    }
+
+    /* System */
+    cJSON *sys = cJSON_AddObjectToObject(root, "system");
+    cJSON_AddNumberToObject(sys, "uptime",
+                            (double)(esp_timer_get_time() / 1000000));
+    cJSON_AddStringToObject(sys, "resetReason",
+                            reset_reason_str(esp_reset_reason()));
+
+    char *json_str = cJSON_Print(root);
+    cJSON_Delete(root);
+    if (json_str) {
+        httpd_resp_sendstr(req, json_str);
+        free(json_str);
+        return ESP_OK;
+    }
+    return ESP_FAIL;
+}
+
 esp_err_t app_web_ui_start() {
 #if APP_DEBUG > 0
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
@@ -582,7 +768,7 @@ esp_err_t app_web_ui_start() {
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.uri_match_fn = httpd_uri_match_wildcard;
-    config.max_uri_handlers = 10;
+    config.max_uri_handlers = 11;
 
     ESP_LOGI(TAG, "Starting HTTP Server");
     REST_CHECK(httpd_start(&server, &config) == ESP_OK, "Start server failed",
@@ -650,6 +836,13 @@ esp_err_t app_web_ui_start() {
                                             .handler = mqtt_config_set_handler,
                                             .user_ctx = rest_context};
     httpd_register_uri_handler(server, &mqtt_config_set_post_uri);
+
+    /* URI handler for device system info / health */
+    httpd_uri_t system_info_get_uri = {.uri = "/system-info",
+                                       .method = HTTP_GET,
+                                       .handler = system_info_get_handler,
+                                       .user_ctx = rest_context};
+    httpd_register_uri_handler(server, &system_info_get_uri);
 
     /* URI handler for getting web server files */
     httpd_uri_t common_get_uri = {.uri = "/*",

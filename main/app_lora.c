@@ -1,6 +1,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <esp_log.h>
+#include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
@@ -18,6 +19,10 @@ static const char *TAG = "app_lora";
 static TaskHandle_t xRxTask = NULL;
 static TaskHandle_t xTxTask = NULL;
 static SemaphoreHandle_t xRadioSemaphore = NULL;
+static volatile bool s_rx_valid = false;
+static volatile int s_rx_rssi = 0;
+static volatile float s_rx_snr = 0.0f;
+static volatile int64_t s_rx_time_us = 0;
 
 static app_lora_params_t radio_params = {.tx_power = DEFAULT_TX_POWER,
                                          .frequency = DEFAULT_FREQ,
@@ -148,6 +153,10 @@ static void rx_task(void *pvParameter) {
                 if (msg_len > PAYLOAD_LEN_MAX) msg_len = PAYLOAD_LEN_MAX;
                 buf[msg_len] = 0;
                 GetPacketStatus(&rssi, &snr);
+                s_rx_rssi = rssi;
+                s_rx_snr = snr;
+                s_rx_time_us = esp_timer_get_time();
+                s_rx_valid = true;
                 ESP_LOGI(TAG, "Packet received - Size: %d RSSI: %d, SNR: %d",
                          msg_len, rssi, snr);
                 ESP_LOGI(TAG, "%s", buf);
@@ -160,6 +169,10 @@ static void rx_task(void *pvParameter) {
                 float snr = lora_packet_snr();
                 if (msg_len > PAYLOAD_LEN_MAX) msg_len = PAYLOAD_LEN_MAX;
                 buf[msg_len] = 0;
+                s_rx_rssi = rssi;
+                s_rx_snr = snr;
+                s_rx_time_us = esp_timer_get_time();
+                s_rx_valid = true;
                 ESP_LOGI(TAG, "Packet received - Size: %d RSSI: %d, SNR: %f",
                          msg_len, rssi, snr);
                 ESP_LOGI(TAG, "%s", buf);
@@ -223,6 +236,16 @@ int app_lora_get_params(app_lora_params_t *out_params) {
         return ESP_OK;
     }
     return ESP_FAIL;
+}
+
+int app_lora_get_rx_status(int *rssi, float *snr, int64_t *age_ms) {
+    if (!s_rx_valid) {
+        return ESP_FAIL;
+    }
+    if (rssi) *rssi = s_rx_rssi;
+    if (snr) *snr = s_rx_snr;
+    if (age_ms) *age_ms = (esp_timer_get_time() - s_rx_time_us) / 1000;
+    return ESP_OK;
 }
 
 int app_lora_set_params(app_lora_params_t *in_params,

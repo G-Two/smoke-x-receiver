@@ -154,4 +154,61 @@ export default [
   rest.post("/cmd", (req, res, ctx) => {
     return res(ctx.delay(300), ctx.text("OK"))
   }),
+  rest.get("/system-info", (req, res, ctx) => {
+    return res(
+      ctx.delay(400),
+      ctx.json({
+        firmware: {
+          version: "v1.5.0",
+          project: "smoke-x",
+          idf: "v5.4.4",
+          buildDate: "Aug  2 2026",
+          buildTime: "12:47:03",
+        },
+        chip: {
+          model: "ESP32-S3",
+          revision: 0,
+          cores: 2,
+          mac: "A0:B7:65:1C:2D:3E",
+        },
+        memory: {
+          heapFree: 213_400,
+          heapMinFree: 168_220,
+          heapTotal: 327_680,
+          heapLargestBlock: 110_592,
+        },
+        flash: {
+          chipSize: 8_388_608,
+          spiffsTotal: 917_504,
+          spiffsUsed: 573_440,
+        },
+        nvs: {
+          ok: true,
+          usedEntries: 132,
+          freeEntries: 498,
+          totalEntries: 630,
+          namespaceCount: 4,
+        },
+        wifi: {
+          mode: "STA",
+          connected: true,
+          ip: "192.168.1.42",
+          ssid: "Backyard-2G",
+          rssi: -58,
+          channel: 6,
+        },
+        lora: {
+          frequency: 915_000_000,
+          everReceived: true,
+          rssi: -74,
+          snr: 9.25,
+          ageMs: 4200,
+        },
+        system: {
+          uptime: 92_760,
+          resetReason: "Power-on",
+        },
+      })
+    )
+  }),
 ]

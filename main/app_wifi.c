@@ -239,8 +239,7 @@ static void sta_retry_task(void *arg) {
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(STA_FALLBACK_RETRY_MS));
         wifi_sta_list_t sta_list;
-        if (esp_wifi_ap_get_sta_list(&sta_list) == ESP_OK &&
-            sta_list.num > 0) {
+        if (esp_wifi_ap_get_sta_list(&sta_list) == ESP_OK && sta_list.num > 0) {
             ESP_LOGI(TAG, "Config AP in use, postponing STA retry");
             continue;
         }
@@ -279,8 +278,7 @@ static void sta_fail_detect(void *arg) {
                 app_wifi_params.mode == WIFI_MODE_STA &&
                 !sta_retry_task_handle) {
                 if (xTaskCreate(&sta_retry_task, "app_wifi_sta_retry", 4096,
-                                NULL, 5,
-                                &sta_retry_task_handle) != pdPASS) {
+                                NULL, 5, &sta_retry_task_handle) != pdPASS) {
                     sta_retry_task_handle = NULL;
                     ESP_LOGE(TAG, "Failed to create STA retry task");
                 }
@@ -343,8 +341,8 @@ static void apply_params(const app_wifi_params_t *params) {
         ESP_ERROR_CHECK(esp_wifi_start());
         ESP_ERROR_CHECK(esp_netif_set_hostname(sta_netif, HOSTNAME));
 
-        if (xTaskCreate(&sta_fail_detect, "app_wifi_sta_fail_detect", 4096, NULL, 5,
-                        &sta_fail_detect_task) != pdPASS) {
+        if (xTaskCreate(&sta_fail_detect, "app_wifi_sta_fail_detect", 4096,
+                        NULL, 5, &sta_fail_detect_task) != pdPASS) {
             sta_fail_detect_task = NULL;
             ESP_LOGE(TAG, "Failed to create STA fail-detect task");
         }
@@ -382,7 +380,8 @@ void app_wifi_set_params(app_wifi_params_t *params) {
         return;
     }
     memcpy(copy, params, sizeof(*copy));
-    BaseType_t ok = xTaskCreate(&set_params_task, "app_wifi_set_params", 4096, copy, 5, NULL);
+    BaseType_t ok = xTaskCreate(&set_params_task, "app_wifi_set_params", 4096,
+                                copy, 5, NULL);
     if (ok != pdPASS) {
         ESP_LOGE(TAG, "Failed to start app_wifi_set_params task");
         free(copy);
@@ -435,6 +434,17 @@ bool app_wifi_is_ap_mode() {
     }
 
     return mode == WIFI_MODE_AP;
+}
+
+esp_err_t app_wifi_get_sta_rssi(int8_t *rssi, uint8_t *channel) {
+    wifi_ap_record_t ap_info;
+    esp_err_t err = esp_wifi_sta_get_ap_info(&ap_info);
+    if (err != ESP_OK) {
+        return err;
+    }
+    if (rssi) *rssi = ap_info.rssi;
+    if (channel) *channel = ap_info.primary;
+    return ESP_OK;
 }
 
 esp_err_t app_wifi_get_ip_str(char *buf, size_t len) {
@@ -501,7 +511,8 @@ esp_err_t app_wifi_try_connect(const char *ssid, const char *password,
     sta_netif = esp_netif_create_default_wifi_sta();
     if (!sta_netif) return ESP_FAIL;
 
-    /* Wi-Fi driver and event handlers are initialized once in ensure_wifi_inited(). */
+    /* Wi-Fi driver and event handlers are initialized once in
+     * ensure_wifi_inited(). */
     ensure_wifi_inited();
 
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));

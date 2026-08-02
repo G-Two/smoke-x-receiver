@@ -14,6 +14,7 @@ idf_component_register(
              esp_app_format
              esp_event
              esp_http_server
+             esp_hw_support
              esp_netif
              esp_timer
              esp_wifi
@@ -22,6 +23,7 @@ idf_component_register(
              mqtt
              nvs_flash
              ra01s
+             spi_flash
              spiffs
              vfs
              wpa_supplicant)

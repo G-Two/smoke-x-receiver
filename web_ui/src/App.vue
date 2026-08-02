@@ -7,6 +7,8 @@ import {
   deviceModel,
   reachable,
   startDevicePolling,
+  firmwareVersion,
+  loadFirmwareVersion,
 } from "./device"
 import ToastHost from "./components/ToastHost.vue"
 import ConfirmDialog from "./components/ConfirmDialog.vue"
@@ -37,6 +39,7 @@ const TABS = [
     ],
   },
   { to: "/mqtt", label: "MQTT", icon: ["M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"] },
+  { to: "/system", label: "System", icon: ["M22 12h-4l-3 9L9 3l-3 9H2"] },
 ]
 
 const statusKind = computed(() =>
@@ -77,7 +80,10 @@ function goToHub() {
   if (route.path !== "/") router.push("/")
 }
 
-onMounted(startDevicePolling)
+onMounted(() => {
+  startDevicePolling()
+  loadFirmwareVersion()
+})
 </script>
 
 <template>
@@ -193,6 +199,14 @@ onMounted(startDevicePolling)
          page). -->
     <SettingsMenu v-if="navOpen && !onConfigPage" />
     <router-view v-else />
+
+    <!-- Tiny build stamp, always visible. Links to the full System page. -->
+    <footer class="site-footer">
+      <router-link to="/system" class="footer-link">
+        Smoke X Receiver{{ firmwareVersion ? ` · ${firmwareVersion}` : "" }}
+      </router-link>
+    </footer>
+
     <ToastHost />
     <ConfirmDialog />
   </div>
@@ -362,5 +376,23 @@ onMounted(startDevicePolling)
   width: 20px;
   height: 20px;
   display: block;
+}
+
+.site-footer {
+  max-width: 720px;
+  margin: 2em auto 1em;
+  padding: 0 1em;
+  text-align: center;
+}
+.footer-link {
+  font-size: 0.68em;
+  color: var(--text-muted);
+  text-decoration: none;
+  letter-spacing: 0.03em;
+}
+.footer-link:hover,
+.footer-link:focus-visible {
+  color: var(--brand-amber);
+  text-decoration: underline;
 }
 </style>

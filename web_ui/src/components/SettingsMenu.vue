@@ -28,6 +28,12 @@ const SECTIONS = [
     desc: "Publish to an MQTT broker and integrate with Home Assistant.",
     icon: ["M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"],
   },
+  {
+    to: "/system",
+    label: "System",
+    desc: "Firmware version, memory, storage, and Wi-Fi/LoRa signal health.",
+    icon: ["M22 12h-4l-3 9L9 3l-3 9H2"],
+  },
 ]
 const CHEVRON = "M9 18l6-6-6-6"
 </script>

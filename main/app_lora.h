@@ -67,6 +67,7 @@ int app_lora_stop_rx();
 int app_lora_get_params(app_lora_params_t* out_params);
 int app_lora_set_params(app_lora_params_t* in_params,
                         TaskHandle_t calling_task);
+int app_lora_get_rx_status(int* rssi, float* snr, int64_t* age_ms);
 int app_lora_init();
 
 #endif

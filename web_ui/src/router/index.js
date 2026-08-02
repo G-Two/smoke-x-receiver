@@ -4,6 +4,7 @@ import StatusForm from "../components/StatusForm.vue"
 import MqttConfigForm from "../components/MqttConfigForm.vue"
 import SmokeXConfigForm from "../components/SmokeXConfigForm.vue"
 import LoraAdvancedForm from "../components/LoraAdvancedForm.vue"
+import SystemInfoForm from "../components/SystemInfoForm.vue"
 
 const routes = [
   {
@@ -32,6 +33,12 @@ const routes = [
     path: "/lora",
     name: "lora",
     component: LoraAdvancedForm,
+  },
+  {
+    // Deep-linkable: "/system" is whitelisted in the firmware's SPA routing.
+    path: "/system",
+    name: "system",
+    component: SystemInfoForm,
   },
 ]
 

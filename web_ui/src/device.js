@@ -24,6 +24,21 @@ export async function loadRfParams() {
   }
 }
 
+// Firmware version for the always-visible footer. Static for a given build, so
+// it's fetched once (lazily) rather than polled; the System page polls the full
+// /system-info payload separately for live health metrics.
+export const firmwareVersion = ref(null)
+
+export async function loadFirmwareVersion() {
+  if (firmwareVersion.value) return
+  try {
+    const info = await getJSON("system-info")
+    firmwareVersion.value = info?.firmware?.version || null
+  } catch (e) {
+    /* leave null; footer simply omits the version */
+  }
+}
+
 const FAST_MS = 2000
 const SLOW_MS = 10000
 
