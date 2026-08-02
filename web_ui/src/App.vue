@@ -9,6 +9,7 @@ import {
   packetAgeMs,
   mqttEnabled,
   mqttConnected,
+  STALE_MS,
   startDevicePolling,
   firmwareVersion,
   loadFirmwareVersion,
@@ -48,7 +49,6 @@ const TABS = [
   { to: "/system", label: "System", icon: ["M22 12h-4l-3 9L9 3l-3 9H2"] },
 ]
 
-const STALE_MS = 90000
 const statusKind = computed(() => {
   if (!reachable.value) return "offline"
   if (!isPaired.value) return "unpaired"

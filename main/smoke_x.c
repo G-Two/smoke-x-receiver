@@ -4,6 +4,7 @@
 #include <freertos/task.h>
 #include <esp_event.h>
 #include <esp_log.h>
+#include <esp_timer.h>
 #include <nvs.h>
 #include "cJSON.h"
 #include "app_lora.h"
@@ -19,6 +20,12 @@
 #define MIN_FREE_HEAP_SIZE 32768
 #define MAX_RECORDS 1200
 #define JSON_STR_LEN 16000
+/* When the base station has been silent longer than this, the next packet's
+   history entry is preceded by a gap marker ({"gap": <seconds>}) so the chart
+   can draw a break scaled to the outage length instead of healing over it.
+   ~3 missed 30 s transmissions, mirroring the web UI's "no signal" threshold
+   (STALE_MS). */
+#define HISTORY_GAP_THRESHOLD_US (90 * 1000 * 1000LL)
 
 static const char *TAG = "smoke_x";
 static TaskHandle_t xSyncTask = NULL;
@@ -106,18 +113,38 @@ static void handle_sync_msg(const char *msg) {
     }
 }
 
+/* Append one item to a probe's history, dropping the oldest sample first when
+   the record cap is hit or free heap runs low. */
+static void append_history_item(unsigned int i, cJSON *item) {
+    if ((cJSON_GetArraySize(probes_history[i]) >= MAX_RECORDS) ||
+        (xPortGetFreeHeapSize() < MIN_FREE_HEAP_SIZE)) {
+        cJSON_DeleteItemFromArray(probes_history[i], 0);
+    }
+    cJSON_AddItemToArray(probes_history[i], item);
+}
+
 static void update_history() {
     if (!root) {
         init_history_json();
     }
 
+    /* Detect an outage: a long silence between packets gets a gap marker
+       carrying its duration so the chart can scale the break. Not on the first
+       sample after boot (no prior timestamp to measure against). */
+    static int64_t last_update_us = 0;
+    int64_t now = esp_timer_get_time();
+    int64_t elapsed_us = now - last_update_us;
+    bool gap = last_update_us != 0 && elapsed_us > HISTORY_GAP_THRESHOLD_US;
+    last_update_us = now;
+
     for (unsigned int i = 0; i < config.num_probes; i++) {
-        if ((cJSON_GetArraySize(probes_history[0]) >= MAX_RECORDS) ||
-            (xPortGetFreeHeapSize() < MIN_FREE_HEAP_SIZE)) {
-            cJSON_DeleteItemFromArray(probes_history[i], 0);
+        if (gap) {
+            int64_t elapsed_s = elapsed_us / 1000000;
+            cJSON *marker = cJSON_CreateObject();
+            cJSON_AddNumberToObject(marker, "gap", (double)elapsed_s);
+            append_history_item(i, marker);
         }
-        cJSON_AddItemToArray(probes_history[i],
-                             cJSON_CreateNumber(state.probes[i].temp));
+        append_history_item(i, cJSON_CreateNumber(state.probes[i].temp));
     }
 }
 

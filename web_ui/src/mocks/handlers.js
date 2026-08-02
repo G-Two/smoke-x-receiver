@@ -60,6 +60,10 @@ function buildSmokeData() {
     stallAt: 0.6,
   })
   const pit = pitCurve({ target: 250 })
+  // Simulate a ~30 min signal dropout ~2/3 through the cook so the chart's
+  // scaled gap band is visible in the dev/preview build. One marker per outage
+  // carrying its duration in seconds, exactly as the firmware inserts it.
+  for (const arr of [beef, pork, chicken, pit]) arr.splice(320, 0, { gap: 1800 })
   return {
     probe_1: probe(beef, 32, 203), // beef (brisket) — target 203°F
     probe_2: probe(pork, 32, 203), // pork (shoulder) — target 203°F

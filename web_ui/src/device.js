@@ -2,7 +2,7 @@
 // both the nav status pill and the Pairing page. Polls fast while unpaired (to
 // catch a pairing quickly) and slowly once paired; skips network requests while
 // the tab is hidden.
-import { ref } from "vue"
+import { ref, computed } from "vue"
 import { getJSON } from "./api"
 
 export const loaded = ref(false)
@@ -14,6 +14,13 @@ export const currentFrequency = ref(null)
 export const packetAgeMs = ref(null)
 export const mqttEnabled = ref(false)
 export const mqttConnected = ref(false)
+export const STALE_MS = 90000
+export const dataStale = computed(
+  () =>
+    reachable.value &&
+    typeof packetAgeMs.value === "number" &&
+    packetAgeMs.value > STALE_MS
+)
 
 // RF/LoRa parameters change rarely, so this is fetched on demand (not polled)
 // and shared between the read-only Pairing display and the Advanced page.
