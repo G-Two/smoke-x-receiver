@@ -278,6 +278,12 @@ static esp_err_t pairing_status_get_handler(httpd_req_t *req) {
     cJSON_AddStringToObject(root, "deviceId", smoke_x_config.device_id);
     cJSON_AddStringToObject(root, "deviceModel",
                             smoke_x_config.num_probes == 2 ? "X2" : "X4");
+    int64_t lora_age_ms;
+    if (app_lora_get_rx_status(NULL, NULL, &lora_age_ms) == ESP_OK) {
+        cJSON_AddNumberToObject(root, "packetAgeMs", (double)lora_age_ms);
+    } else {
+        cJSON_AddNullToObject(root, "packetAgeMs");
+    }
     char *json_str = cJSON_Print(root);
     cJSON_Delete(root);
     if (json_str) {

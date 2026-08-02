@@ -11,6 +11,7 @@ export const isPaired = ref(false)
 export const deviceModel = ref(null)
 export const deviceId = ref(null)
 export const currentFrequency = ref(null)
+export const packetAgeMs = ref(null)
 
 // RF/LoRa parameters change rarely, so this is fetched on demand (not polled)
 // and shared between the read-only Pairing display and the Advanced page.
@@ -54,6 +55,7 @@ async function poll() {
       deviceModel.value = d.deviceModel
       deviceId.value = d.deviceId
       currentFrequency.value = d.currentFrequency
+      packetAgeMs.value = typeof d.packetAgeMs === "number" ? d.packetAgeMs : null
       reachable.value = true
     } catch (e) {
       reachable.value = false
@@ -77,6 +79,7 @@ export function markUnpaired() {
   deviceModel.value = null
   deviceId.value = null
   currentFrequency.value = null
+  packetAgeMs.value = null
   if (started) {
     clearTimeout(timer)
     timer = setTimeout(poll, FAST_MS)

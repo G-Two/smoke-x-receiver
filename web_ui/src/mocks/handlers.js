@@ -103,6 +103,7 @@ export default [
         deviceId: "|ABC12",
         currentFrequency: 915000000,
         deviceModel: "X4",
+        packetAgeMs: 4200,
       })
     )
   }),

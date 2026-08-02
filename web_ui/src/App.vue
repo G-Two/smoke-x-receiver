@@ -6,6 +6,7 @@ import {
   isPaired,
   deviceModel,
   reachable,
+  packetAgeMs,
   startDevicePolling,
   firmwareVersion,
   loadFirmwareVersion,
@@ -42,16 +43,41 @@ const TABS = [
   { to: "/system", label: "System", icon: ["M22 12h-4l-3 9L9 3l-3 9H2"] },
 ]
 
-const statusKind = computed(() =>
-  !reachable.value ? "offline" : isPaired.value ? "paired" : "unpaired"
-)
-const statusText = computed(() =>
-  statusKind.value === "offline"
-    ? "Offline"
-    : statusKind.value === "paired"
-    ? `Paired · ${deviceModel.value || "?"}`
-    : "Unpaired"
-)
+const STALE_MS = 90000
+const statusKind = computed(() => {
+  if (!reachable.value) return "offline"
+  if (!isPaired.value) return "unpaired"
+  if (packetAgeMs.value == null || packetAgeMs.value > STALE_MS) return "warn"
+  return "paired"
+})
+const statusText = computed(() => {
+  switch (statusKind.value) {
+    case "offline":
+      return "Offline"
+    case "unpaired":
+      return "Unpaired"
+    case "warn":
+      // Distinguish "never heard from it yet" from "was receiving, now silent".
+      return packetAgeMs.value == null ? "Paired · waiting" : "Paired · no signal"
+    default:
+      return `Paired · ${deviceModel.value || "?"}`
+  }
+})
+// Fuller explanation on hover/focus, since the pill text is necessarily terse.
+const statusTitle = computed(() => {
+  switch (statusKind.value) {
+    case "offline":
+      return "Can't reach the receiver — retrying"
+    case "unpaired":
+      return "Not paired with a base station"
+    case "warn":
+      return packetAgeMs.value == null
+        ? "Paired, but no transmission received yet"
+        : "Paired, but no transmission received recently — check the base station"
+    default:
+      return `Paired with ${deviceModel.value || "device"} and receiving data`
+  }
+})
 
 // The tab strip is a "configuration mode": opening the menu reveals the three
 // config pages; the dashboard is home. The strip stays visible while on any
@@ -125,6 +151,7 @@ onMounted(() => {
           <span
             class="status-pill"
             :class="`pill-${statusKind}`"
+            :title="statusTitle"
             role="status"
             aria-live="polite"
           >
@@ -303,6 +330,11 @@ onMounted(() => {
   background: var(--pill-ok-bg);
   color: var(--pill-ok-fg);
   border-color: var(--pill-ok-bg);
+}
+.pill-warn {
+  background: var(--pill-warn-bg);
+  color: var(--pill-warn-fg);
+  border-color: var(--pill-warn-bg);
 }
 .pill-offline {
   background: var(--pill-off-bg);
