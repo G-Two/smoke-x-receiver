@@ -5,7 +5,6 @@
     </div>
 
     <template v-if="loaded && probes.length">
-      <h2 class="section-label">Now</h2>
       <div class="probe-cards">
         <div
           v-for="p in probes"
@@ -443,27 +442,12 @@ export default {
   color: var(--alarm-high-fg);
 }
 
-/* Small muted section header ("Now") over the cards, aligned to the 720px
-   content column. */
-.section-label {
-  max-width: 720px;
-  margin: 1em auto 0.4em;
-  padding: 0 1.25em;
-  box-sizing: border-box;
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  font-size: 0.72em;
-  font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-}
-
 .probe-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 1em;
   max-width: 720px;
-  margin: 0 auto 1.25em;
+  margin: 1em auto 1.25em;
   padding: 0 1em;
   box-sizing: border-box;
 }

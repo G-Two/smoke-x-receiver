@@ -40,10 +40,26 @@ typedef struct {
     char* state_topic;
 } app_mqtt_params_t;
 
+/* Live connection/telemetry snapshot for the Device Information page. Ages are
+   pre-computed (ms) with -1 meaning "n/a" (never happened / not connected). */
+typedef struct {
+    bool enabled;
+    bool connected;
+    bool ha_discovery;
+    bool discovery_published;
+    int64_t connected_for_ms;    /* since last connect; -1 if not connected */
+    int64_t last_publish_ms_ago; /* -1 if nothing published yet */
+    uint32_t publish_count;      /* state messages sent while connected */
+    uint32_t connect_count;      /* successful connections since boot */
+    char last_error[80];         /* last connection error; "" if none */
+    int64_t last_error_ms_ago;   /* -1 if no error recorded */
+} app_mqtt_stats_t;
+
 esp_err_t app_mqtt_start();
 void app_mqtt_stop();
 bool app_mqtt_is_connected();
 bool app_mqtt_is_enabled();
+void app_mqtt_get_stats(app_mqtt_stats_t*);
 void app_mqtt_publish_discovery();
 void app_mqtt_publish_state();
 void app_mqtt_get_params(app_mqtt_params_t*);

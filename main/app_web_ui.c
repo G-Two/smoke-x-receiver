@@ -284,6 +284,8 @@ static esp_err_t pairing_status_get_handler(httpd_req_t *req) {
     } else {
         cJSON_AddNullToObject(root, "packetAgeMs");
     }
+    cJSON_AddBoolToObject(root, "mqttEnabled", app_mqtt_is_enabled());
+    cJSON_AddBoolToObject(root, "mqttConnected", app_mqtt_is_connected());
     char *json_str = cJSON_Print(root);
     cJSON_Delete(root);
     if (json_str) {
@@ -607,6 +609,20 @@ static const char *reset_reason_str(esp_reset_reason_t reason) {
     }
 }
 
+static void mqtt_broker_for_display(const char *uri, char *out,
+                                    size_t out_len) {
+    out[0] = '\0';
+    if (!uri) return;
+    const char *scheme = strstr(uri, "://");
+    const char *at = strchr(uri, '@');
+    if (scheme && at && at > scheme + 3) {
+        int prefix = (int)(scheme + 3 - uri); /* through "://" */
+        snprintf(out, out_len, "%.*s***%s", prefix, uri, at);
+    } else {
+        strlcpy(out, uri, out_len);
+    }
+}
+
 /* Handler exposing device firmware/build info and runtime health for the web
    UI's System page (and the firmware-version footer). Read-only; safe to poll.
  */
@@ -740,6 +756,46 @@ static esp_err_t system_info_get_handler(httpd_req_t *req) {
         cJSON_AddNumberToObject(lora, "ageMs", (double)lora_age_ms);
     } else {
         cJSON_AddBoolToObject(lora, "everReceived", false);
+    }
+
+    /* MQTT (broker link + publish telemetry). Only the connection state is
+       reported when disabled; the rest is meaningless without a client. */
+    cJSON *mqtt = cJSON_AddObjectToObject(root, "mqtt");
+    app_mqtt_stats_t mqtt_stats;
+    app_mqtt_get_stats(&mqtt_stats);
+    cJSON_AddBoolToObject(mqtt, "enabled", mqtt_stats.enabled);
+    if (mqtt_stats.enabled) {
+        app_mqtt_params_t mqtt_params;
+        app_mqtt_get_params(&mqtt_params);
+        char broker[APP_MQTT_MAX_URI_LEN + 4];
+        mqtt_broker_for_display(mqtt_params.uri, broker, sizeof(broker));
+        cJSON_AddStringToObject(mqtt, "broker", broker);
+        cJSON_AddBoolToObject(mqtt, "connected", mqtt_stats.connected);
+        cJSON_AddBoolToObject(mqtt, "haDiscovery", mqtt_stats.ha_discovery);
+        cJSON_AddBoolToObject(mqtt, "discoveryPublished",
+                              mqtt_stats.discovery_published);
+        cJSON_AddNumberToObject(mqtt, "publishCount", mqtt_stats.publish_count);
+        cJSON_AddNumberToObject(mqtt, "connectCount", mqtt_stats.connect_count);
+        if (mqtt_stats.connected_for_ms >= 0) {
+            cJSON_AddNumberToObject(mqtt, "connectedForMs",
+                                    (double)mqtt_stats.connected_for_ms);
+        } else {
+            cJSON_AddNullToObject(mqtt, "connectedForMs");
+        }
+        if (mqtt_stats.last_publish_ms_ago >= 0) {
+            cJSON_AddNumberToObject(mqtt, "lastPublishMsAgo",
+                                    (double)mqtt_stats.last_publish_ms_ago);
+        } else {
+            cJSON_AddNullToObject(mqtt, "lastPublishMsAgo");
+        }
+        if (mqtt_stats.last_error[0]) {
+            cJSON_AddStringToObject(mqtt, "lastError", mqtt_stats.last_error);
+            cJSON_AddNumberToObject(mqtt, "lastErrorMsAgo",
+                                    (double)mqtt_stats.last_error_ms_ago);
+        } else {
+            cJSON_AddNullToObject(mqtt, "lastError");
+            cJSON_AddNullToObject(mqtt, "lastErrorMsAgo");
+        }
     }
 
     /* System */

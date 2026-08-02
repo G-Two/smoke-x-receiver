@@ -106,7 +106,16 @@ const flash = computed(() => info.value?.flash || {})
 const nvs = computed(() => info.value?.nvs || {})
 const wifi = computed(() => info.value?.wifi || {})
 const lora = computed(() => info.value?.lora || {})
+const mqtt = computed(() => info.value?.mqtt || {})
 const sys = computed(() => info.value?.system || {})
+
+// "Reconnects" = connections after the first, so a stable link reads 0.
+const reconnects = computed(() =>
+  typeof mqtt.value.connectCount === "number"
+    ? Math.max(0, mqtt.value.connectCount - 1)
+    : null
+)
+const fmtCount = (n) => (typeof n === "number" ? n.toLocaleString() : DASH)
 
 const ramUsed = computed(() =>
   mem.value.heapTotal != null && mem.value.heapFree != null
@@ -212,6 +221,46 @@ const nvsPct = computed(() => pct(nvs.value.usedEntries, nvs.value.totalEntries)
             <div class="row"><dt>Last packet</dt><dd>{{ fmtAge(lora.ageMs) }}</dd></div>
           </template>
           <div v-else class="row"><dt>Status</dt><dd class="muted">No packets received yet</dd></div>
+        </dl>
+      </section>
+
+      <!-- MQTT -->
+      <section class="card">
+        <h2 class="card-title">MQTT</h2>
+        <dl class="rows">
+          <div class="row">
+            <dt>Status</dt>
+            <dd>
+              <span v-if="!mqtt.enabled" class="chip">Disabled</span>
+              <span v-else class="chip" :class="mqtt.connected ? 'q-ok' : 'q-bad'">
+                {{ mqtt.connected ? "Connected" : "Disconnected" }}
+              </span>
+            </dd>
+          </div>
+          <template v-if="mqtt.enabled">
+            <div class="row"><dt>Broker</dt><dd class="mono break">{{ mqtt.broker || DASH }}</dd></div>
+            <div class="row">
+              <dt>HA discovery</dt>
+              <dd v-if="mqtt.haDiscovery">
+                On<span class="muted"> · {{ mqtt.discoveryPublished ? "published" : "pending" }}</span>
+              </dd>
+              <dd v-else class="muted">Off</dd>
+            </div>
+            <div class="row"><dt>Last publish</dt><dd>{{ fmtAge(mqtt.lastPublishMsAgo) }}</dd></div>
+            <div class="row"><dt>Publishes</dt><dd class="mono">{{ fmtCount(mqtt.publishCount) }}</dd></div>
+            <div class="row"><dt>Reconnects</dt><dd class="mono">{{ fmtCount(reconnects) }}</dd></div>
+            <div class="row">
+              <dt>Connected for</dt>
+              <dd>{{ mqtt.connectedForMs != null ? fmtUptime(Math.round(mqtt.connectedForMs / 1000)) : DASH }}</dd>
+            </div>
+            <div v-if="mqtt.lastError" class="row">
+              <dt>Last error</dt>
+              <dd class="err-cell">
+                <span :class="{ 'q-bad': !mqtt.connected }" class="chip">{{ mqtt.lastError }}</span>
+                <span class="muted">{{ fmtAge(mqtt.lastErrorMsAgo) }}</span>
+              </dd>
+            </div>
+          </template>
         </dl>
       </section>
 
@@ -354,8 +403,21 @@ const nvsPct = computed(() => pct(nvs.value.usedEntries, nvs.value.totalEntries)
     monospace;
   font-size: 0.92em;
 }
+/* Let long values (e.g. a broker URI) wrap instead of overflowing the row. */
+.break {
+  word-break: break-all;
+}
 .muted {
   color: var(--text-muted);
+}
+
+/* Last-error row: the message can be long, so allow the chip to wrap. */
+.err-cell {
+  align-items: flex-end;
+}
+.err-cell .chip {
+  white-space: normal;
+  text-align: left;
 }
 
 .chip {

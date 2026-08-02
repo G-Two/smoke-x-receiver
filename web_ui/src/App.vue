@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from "vue"
+import { computed, onMounted, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { preference, cyclePreference } from "./theme"
 import {
@@ -7,6 +7,8 @@ import {
   deviceModel,
   reachable,
   packetAgeMs,
+  mqttEnabled,
+  mqttConnected,
   startDevicePolling,
   firmwareVersion,
   loadFirmwareVersion,
@@ -16,6 +18,9 @@ import ConfirmDialog from "./components/ConfirmDialog.vue"
 import SettingsMenu from "./components/SettingsMenu.vue"
 
 const THEME_ICONS = { auto: "◐", light: "☀", dark: "☾" }
+
+// The build stamp links out to the project's source repository.
+const REPO_URL = "https://github.com/G-Two/smoke-x-receiver"
 
 // Feather-style icons (stroke, currentColor). Each entry is a list of paths.
 // The dashboard ("/") is intentionally NOT a tab — it's reached by closing the
@@ -63,6 +68,9 @@ const statusText = computed(() => {
       return `Paired · ${deviceModel.value || "?"}`
   }
 })
+
+const showMqttPill = computed(() => reachable.value && mqttEnabled.value)
+
 // Fuller explanation on hover/focus, since the pill text is necessarily terse.
 const statusTitle = computed(() => {
   switch (statusKind.value) {
@@ -88,6 +96,19 @@ const router = useRouter()
 const navOpen = ref(route.path !== "/")
 // The dashboard is "/"; the tab strip is only relevant while on a config page.
 const onConfigPage = computed(() => route.path !== "/")
+
+// Being on a config page IS settings mode, however we got there — so keep
+// navOpen (which drives the gear's active state) in sync with the route rather
+// than only seeding it once. Without this, arriving via a plain router-link
+// (e.g. the footer's "System information") or browser back/forward would leave
+// the gear dark. Leaving for "/" doesn't force navOpen either way — the hub vs.
+// plain-dashboard choice there stays user-controlled (brand link / back arrow).
+watch(
+  () => route.path,
+  (path) => {
+    if (path !== "/") navOpen.value = true
+  }
+)
 
 // Gear: enter settings (show the hub) from the dashboard, or exit to the
 // dashboard from anywhere in settings.
@@ -156,6 +177,21 @@ onMounted(() => {
             aria-live="polite"
           >
             {{ statusText }}
+          </span>
+          <span
+            v-if="showMqttPill"
+            class="status-pill"
+            :class="mqttConnected ? 'pill-paired' : 'pill-warn'"
+            :title="
+              mqttConnected
+                ? 'MQTT connected to the broker'
+                : 'MQTT enabled but not connected to the broker'
+            "
+            :aria-label="mqttConnected ? 'MQTT connected' : 'MQTT disconnected'"
+            role="status"
+            aria-live="polite"
+          >
+            {{ mqttConnected ? "MQTT" : "MQTT down" }}
           </span>
           <button
             class="theme-toggle"
@@ -227,11 +263,25 @@ onMounted(() => {
     <SettingsMenu v-if="navOpen && !onConfigPage" />
     <router-view v-else />
 
-    <!-- Tiny build stamp, always visible. Links to the full System page. -->
+    <!-- Always-visible footer: the build stamp links out to the source repo;
+         a separate, explicit link goes to the System information page. -->
     <footer class="site-footer">
-      <router-link to="/system" class="footer-link">
-        Smoke X Receiver{{ firmwareVersion ? ` · ${firmwareVersion}` : "" }}
-      </router-link>
+      <!-- Content is kept tight against the tags: a leading/trailing whitespace
+           text node would be covered by the hover underline (an underline in
+           the gap before the link text). -->
+      <a
+        :href="REPO_URL"
+        class="footer-link"
+        target="_blank"
+        rel="noopener noreferrer"
+        >Smoke X Receiver{{
+          firmwareVersion ? ` · ${firmwareVersion}` : ""
+        }}</a
+      >
+      <span class="footer-sep" aria-hidden="true">·</span>
+      <router-link to="/system" class="footer-link"
+        >System information</router-link
+      >
     </footer>
 
     <ToastHost />
@@ -426,5 +476,10 @@ onMounted(() => {
 .footer-link:focus-visible {
   color: var(--brand-amber);
   text-decoration: underline;
+}
+.footer-sep {
+  color: var(--text-muted);
+  font-size: 0.68em;
+  margin: 0 0.5em;
 }
 </style>

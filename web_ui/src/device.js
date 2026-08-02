@@ -12,6 +12,8 @@ export const deviceModel = ref(null)
 export const deviceId = ref(null)
 export const currentFrequency = ref(null)
 export const packetAgeMs = ref(null)
+export const mqttEnabled = ref(false)
+export const mqttConnected = ref(false)
 
 // RF/LoRa parameters change rarely, so this is fetched on demand (not polled)
 // and shared between the read-only Pairing display and the Advanced page.
@@ -56,6 +58,8 @@ async function poll() {
       deviceId.value = d.deviceId
       currentFrequency.value = d.currentFrequency
       packetAgeMs.value = typeof d.packetAgeMs === "number" ? d.packetAgeMs : null
+      mqttEnabled.value = !!d.mqttEnabled
+      mqttConnected.value = !!d.mqttConnected
       reachable.value = true
     } catch (e) {
       reachable.value = false

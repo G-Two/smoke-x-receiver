@@ -1,8 +1,10 @@
 #include <inttypes.h>
 #include <stdlib.h>
+#include <string.h>
 #include <esp_app_desc.h>
 #include <esp_log.h>
 #include <esp_system.h>
+#include <esp_timer.h>
 #include <cJSON.h>
 #include <mqtt_client.h>
 #include <nvs.h>
@@ -47,6 +49,12 @@ static esp_mqtt_client_handle_t client = NULL;
 static bool connected = false;
 static const char *TAG = "app_mqtt";
 static bool discovery_published;
+static int64_t connected_since_us; /* time of last connect; 0 when not up */
+static int64_t last_publish_us;    /* time of last state publish; 0 if never */
+static uint32_t publish_count;
+static uint32_t connect_count;
+static char last_error[80];   /* last connection error; "" if none */
+static int64_t last_error_us; /* time of last error; 0 if none */
 
 #define MQTT_PUBLISH(client, topic, buf)                            \
     if (esp_mqtt_client_enqueue(client, topic, buf,                 \
@@ -76,6 +84,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
             esp_mqtt_client_subscribe(client, app_mqtt_params.ha_status_topic,
                                       1);
             connected = true;
+            connected_since_us = esp_timer_get_time();
+            connect_count++;
             break;
         case MQTT_EVENT_SUBSCRIBED:
             ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED");
@@ -83,6 +93,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
         case MQTT_EVENT_DISCONNECTED:
             ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
             connected = false;
+            connected_since_us = 0;
             break;
         case MQTT_EVENT_PUBLISHED:
             ESP_LOGD(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
@@ -114,7 +125,32 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
                 ESP_LOGI(
                     TAG, "Last errno string (%s)",
                     strerror(event->error_handle->esp_transport_sock_errno));
+                /* Capture a human-readable reason for the status page. Prefer
+                   the socket errno (e.g. "Connection refused"), then the TLS
+                   error (e.g. bad/expired cert). */
+                if (event->error_handle->esp_transport_sock_errno != 0) {
+                    snprintf(
+                        last_error, sizeof(last_error), "Transport: %s",
+                        strerror(
+                            event->error_handle->esp_transport_sock_errno));
+                } else if (event->error_handle->esp_tls_last_esp_err != 0) {
+                    snprintf(last_error, sizeof(last_error), "TLS: %s",
+                             esp_err_to_name(
+                                 event->error_handle->esp_tls_last_esp_err));
+                } else {
+                    strlcpy(last_error, "Transport error", sizeof(last_error));
+                }
+            } else if (event->error_handle->error_type ==
+                       MQTT_ERROR_TYPE_CONNECTION_REFUSED) {
+                /* Broker actively refused the CONNECT (bad credentials, not
+                   authorized, unacceptable protocol version, ...). */
+                snprintf(last_error, sizeof(last_error),
+                         "Broker refused connection (code %d)",
+                         event->error_handle->connect_return_code);
+            } else {
+                strlcpy(last_error, "MQTT error", sizeof(last_error));
             }
+            last_error_us = esp_timer_get_time();
             break;
         default:
             ESP_LOGI(TAG, "Other event id:%d", event->event_id);
@@ -353,11 +389,29 @@ bool app_mqtt_is_connected() { return connected; }
 
 bool app_mqtt_is_enabled() { return app_mqtt_params.enabled; }
 
+void app_mqtt_get_stats(app_mqtt_stats_t *out) {
+    int64_t now = esp_timer_get_time();
+    out->enabled = app_mqtt_params.enabled;
+    out->connected = connected;
+    out->ha_discovery = app_mqtt_params.ha_discovery;
+    out->discovery_published = discovery_published;
+    out->connected_for_ms = (connected && connected_since_us)
+                                ? (now - connected_since_us) / 1000
+                                : -1;
+    out->last_publish_ms_ago =
+        last_publish_us ? (now - last_publish_us) / 1000 : -1;
+    out->publish_count = publish_count;
+    out->connect_count = connect_count;
+    strlcpy(out->last_error, last_error, sizeof(out->last_error));
+    out->last_error_ms_ago = last_error_us ? (now - last_error_us) / 1000 : -1;
+}
+
 void app_mqtt_stop() {
     if (client) {
         ESP_LOGI(TAG, "Stopping MQTT client");
         esp_mqtt_client_destroy(client);
         connected = false;
+        connected_since_us = 0;
         client = NULL;
     }
 }
@@ -572,6 +626,10 @@ void app_mqtt_publish_state() {
                             BOOL_TO_STR(state.billows_attached));
     cJSON_PrintPreallocated(root, buf, sizeof(buf), false);
     MQTT_PUBLISH(client, app_mqtt_params.state_topic, buf);
+    if (connected) {
+        last_publish_us = esp_timer_get_time();
+        publish_count++;
+    }
 
 #if APP_DEBUG > 0
     ESP_LOGD(TAG, "Free Heap: %zu", xPortGetFreeHeapSize());

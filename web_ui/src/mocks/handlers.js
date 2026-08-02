@@ -104,6 +104,8 @@ export default [
         currentFrequency: 915000000,
         deviceModel: "X4",
         packetAgeMs: 4200,
+        mqttEnabled: true,
+        mqttConnected: true,
       })
     )
   }),
@@ -204,6 +206,19 @@ export default [
           rssi: -74,
           snr: 9.25,
           ageMs: 4200,
+        },
+        mqtt: {
+          enabled: true,
+          broker: "mqtts://homeassistant.local:8883",
+          connected: true,
+          haDiscovery: true,
+          discoveryPublished: true,
+          lastPublishMsAgo: 12_000,
+          publishCount: 1204,
+          connectCount: 4,
+          connectedForMs: 8_040_000,
+          lastError: null,
+          lastErrorMsAgo: null,
         },
         system: {
           uptime: 92_760,
